@@ -112,10 +112,7 @@ import { ExpandedImageDialog } from "./chat/ExpandedImageDialog";
 import { markdownImageGallery } from "./chat/markdownImageGallery";
 import { type MediaActionSource } from "./media/MediaActions";
 import { resolveProtocolRelativeMediaUrl } from "./media/mediaContent";
-import {
-  revealInFileExplorerLabelForKind,
-  revealInFileExplorerLabelForOs,
-} from "./preview/fileExplorerLabel";
+import { resolveRevealInFileManagerLabel } from "./preview/fileExplorerLabel";
 import {
   resolveExternalWebLinkHost,
   showExternalLinkContextMenu,
@@ -150,7 +147,11 @@ import { isMarkdownFileLinkLabel } from "@t3tools/shared/markdownLinks";
 import { isElectron } from "../env";
 import { readLocalApi } from "../localApi";
 import { cn } from "../lib/utils";
-import { resolveRemoteOpenState, useRemoteOpenResolution } from "../remoteOpen";
+import {
+  canUseLocalShellActions,
+  resolveRemoteOpenState,
+  useRemoteOpenResolution,
+} from "../remoteOpen";
 import { useRightPanelStore } from "../rightPanelStore";
 import { readThreadShell, useProjects } from "../state/entities";
 import { serverEnvironment } from "../state/server";
@@ -206,7 +207,6 @@ import {
 } from "./chat/ChatMarkdownMedia";
 import { MarkdownExternalLinkContent } from "./chat/MarkdownExternalLink";
 import { MarkdownFileLink } from "./chat/MarkdownFileLink";
-import { canUseMarkdownFileShellActions } from "./chat/MarkdownFileLink.logic";
 import { rehypeChipPunctuation } from "./chat/markdownChipPunctuation";
 import { handleMarkdownFragmentClick, rehypeHeadingIds } from "./chat/markdownFragments";
 import { rehypeTextDirection } from "./chat/markdownTextDirection";
@@ -410,12 +410,7 @@ function markdownServerConfigFields(config: ServerConfig | null) {
   return {
     pullRequestsEnabled: config !== null,
     availableEditors: config?.availableEditors ?? NO_MARKDOWN_EDITORS,
-    revealInFileManagerLabel:
-      config?.shellRevealInFileManager === true && config.availableEditors.includes("file-manager")
-        ? config.shellRevealInFileManagerKind === undefined
-          ? revealInFileExplorerLabelForOs(config.environment.platform.os)
-          : revealInFileExplorerLabelForKind(config.shellRevealInFileManagerKind)
-        : undefined,
+    revealInFileManagerLabel: resolveRevealInFileManagerLabel(config),
   };
 }
 
@@ -551,9 +546,7 @@ function useChatMarkdownState({
   const canOperateHost = useEnvironmentScope(environmentId, AuthOrchestrationOperateScope);
   const canOperatePreview = useEnvironmentScope(environmentId, AuthPreviewOperateScope);
   const remoteOpen = useRemoteOpenResolution(environmentId);
-  const canUseShellActions =
-    canOperateHost &&
-    canUseMarkdownFileShellActions(environmentId, remoteOpen.state.mode, remoteOpen.isResolved);
+  const canUseShellActions = canOperateHost && canUseLocalShellActions(environmentId, remoteOpen);
   const openMarkdownMedia = (
     source: string,
     resolvedFilePath?: string,

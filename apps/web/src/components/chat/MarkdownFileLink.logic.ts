@@ -1,19 +1,9 @@
-import type { EnvironmentId } from "@t3tools/contracts";
 import { splitFilePathPosition } from "@t3tools/shared/fileLinks";
 
 import {
   shouldOpenMarkdownFileLinkInBrowserByDefault,
   type MarkdownFileLinkMeta,
 } from "../../markdown-links";
-import type { RemoteOpenMode } from "../../remoteOpen";
-
-export function canUseMarkdownFileShellActions(
-  environmentId: EnvironmentId | null,
-  remoteOpenMode: RemoteOpenMode,
-  isRemoteOpenResolved: boolean,
-): boolean {
-  return environmentId !== null && isRemoteOpenResolved && remoteOpenMode === "local-exec";
-}
 
 export function hasMarkdownFilePrimaryAction(input: {
   canOpenInEditor: boolean;

@@ -6,10 +6,7 @@ import {
 } from "@t3tools/contracts";
 
 import { resolveDiffPathForWorkspace } from "./diffFileActions";
-import {
-  revealInFileExplorerLabelForKind,
-  revealInFileExplorerLabelForOs,
-} from "~/components/preview/fileExplorerLabel";
+import { resolveRevealInFileManagerLabel } from "~/components/preview/fileExplorerLabel";
 import { readLocalApi } from "./localApi";
 import { serverEnvironment } from "./state/server";
 import { shellEnvironment } from "./state/shell";
@@ -92,15 +89,7 @@ export function useFileContextMenu(environmentId: EnvironmentId | null) {
 
   const availableEditors = serverConfig?.availableEditors ?? [];
   const capabilities: FileContextMenuCapabilities = {
-    // WSL can reveal in Windows Explorer despite reporting Linux; use server wording.
-    revealLabel:
-      environmentId !== null &&
-      serverConfig?.shellRevealInFileManager === true &&
-      serverConfig.availableEditors.includes("file-manager")
-        ? serverConfig.shellRevealInFileManagerKind === undefined
-          ? revealInFileExplorerLabelForOs(serverConfig.environment.platform.os)
-          : revealInFileExplorerLabelForKind(serverConfig.shellRevealInFileManagerKind)
-        : undefined,
+    revealLabel: environmentId === null ? undefined : resolveRevealInFileManagerLabel(serverConfig),
     canOpenDefault: availableEditors.includes("file-manager"),
     editorIds: availableEditors,
   };

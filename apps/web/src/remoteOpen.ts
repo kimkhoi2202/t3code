@@ -13,6 +13,7 @@ import { useAtomValue } from "@effect/atom-react";
 import { isDesktopLocalConnectionTarget } from "~/connection/desktopLocal";
 import { isLoopbackHostname } from "~/environments/primary/target";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
+import { appAtomRegistry } from "~/rpc/atomRegistry";
 import { environmentPresentations } from "~/state/presentation";
 
 export interface RemoteOpenHost {
@@ -142,6 +143,19 @@ export function useRemoteOpenResolution(environmentId: EnvironmentId | null): Re
 
 export function useRemoteOpenState(environmentId: EnvironmentId | null): RemoteOpenState {
   return useRemoteOpenResolution(environmentId).state;
+}
+
+/** The latest resolution, for callers outside React such as a menu that is opening. */
+export function readRemoteOpenResolution(environmentId: EnvironmentId): RemoteOpenResolution {
+  return appAtomRegistry.get(remoteOpenResolutionAtom(environmentId));
+}
+
+/** Shell actions such as revealing a file run on the environment's host, so only when it is this one. */
+export function canUseLocalShellActions(
+  environmentId: EnvironmentId | null,
+  resolution: RemoteOpenResolution,
+): boolean {
+  return environmentId !== null && resolution.isResolved && resolution.state.mode === "local-exec";
 }
 
 const REMOTE_FALLBACK_EDITORS: ReadonlyArray<EditorId> = ["vscode"];
