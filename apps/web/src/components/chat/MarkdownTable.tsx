@@ -1,22 +1,36 @@
 import { Check, Copy } from "lucide";
 import { useRef, type ComponentProps } from "react";
 
-import { useCopyToClipboard } from "../../hooks/useCopyToClipboard";
+import { canWriteImageToClipboard, useCopyToClipboard } from "../../hooks/useCopyToClipboard";
 import {
   serializeTableElementToCsv,
   serializeTableElementToMarkdown,
 } from "../../markdown-clipboard";
 import { MorphIcon } from "../MorphIcon";
 import { Button } from "../ui/button";
-import { Menu, MenuItem, MenuPopup, MenuTrigger } from "../ui/menu";
+import {
+  Menu,
+  MenuItem,
+  MenuPopup,
+  MenuSub,
+  MenuSubPopup,
+  MenuSubTrigger,
+  MenuTrigger,
+} from "../ui/menu";
 import { ScrollArea } from "../ui/scroll-area";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { reportMarkdownActionFailure } from "./markdownActionFailure";
+import { renderTableImage, type TableImageTheme } from "./markdownTableImage";
 
 export function MarkdownTable({ children, ...props }: ComponentProps<"table">) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const { copyToClipboard, isCopied: copied } = useCopyToClipboard<"markdown" | "csv">({
+  const {
+    copyToClipboard,
+    copyImageToClipboard,
+    isCopied: copied,
+  } = useCopyToClipboard<"markdown" | "csv" | "png">({
     timeout: 1200,
+    target: "table",
     onError: (cause, format) =>
       reportMarkdownActionFailure({ operation: "copy-table", format }, cause),
   });
@@ -31,6 +45,12 @@ export function MarkdownTable({ children, ...props }: ComponentProps<"table">) {
         : serializeTableElementToCsv(table),
       format,
     );
+  };
+
+  const handleCopyImage = (theme: TableImageTheme) => {
+    const table = containerRef.current?.querySelector("table");
+    if (!table) return;
+    copyImageToClipboard(renderTableImage(table, theme), "png");
   };
 
   return (
@@ -63,6 +83,15 @@ export function MarkdownTable({ children, ...props }: ComponentProps<"table">) {
           <MenuPopup align="end">
             <MenuItem onClick={() => handleCopy("markdown")}>Copy as Markdown</MenuItem>
             <MenuItem onClick={() => handleCopy("csv")}>Copy as CSV</MenuItem>
+            {canWriteImageToClipboard() ? (
+              <MenuSub>
+                <MenuSubTrigger>Copy as image</MenuSubTrigger>
+                <MenuSubPopup>
+                  <MenuItem onClick={() => handleCopyImage("dark")}>Dark</MenuItem>
+                  <MenuItem onClick={() => handleCopyImage("light")}>Light</MenuItem>
+                </MenuSubPopup>
+              </MenuSub>
+            ) : null}
           </MenuPopup>
         </Menu>
       </div>
