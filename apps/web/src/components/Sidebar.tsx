@@ -162,6 +162,9 @@ import { useOlderSettledShelf, useOlderSettledShelfGrowth } from "../state/older
 import { useThreadSearch } from "../state/queries";
 import { useOrchestrationCommand } from "../state/use-orchestration-command";
 import { readEnvironmentScope, useEnvironmentScope } from "../state/session";
+import { shellEnvironment } from "../state/shell";
+import { useAtomCommand } from "../state/use-atom-command";
+import { canUseLocalShellActions, readRemoteOpenResolution } from "../remoteOpen";
 import { appAtomRegistry } from "../rpc/atomRegistry";
 import { canShareWithGuestAtom } from "./chat/guestShareAvailability";
 import { openGuestShareDialog } from "./chat/guestShareDialogState";
@@ -240,6 +243,7 @@ import {
 } from "./sidebar/routeReveal";
 import { stackedThreadToast, toastManager } from "./ui/toast";
 import { titleRegenerationToast } from "./threadTitleRegenerationToast";
+import { resolveRevealInFileManagerLabel } from "./preview/fileExplorerLabel";
 import { copyThreadReference } from "../lib/copyThreadReference";
 import { threadChipCopyTarget } from "@t3tools/client-runtime/thread-reference";
 import { Button } from "./ui/button";
@@ -950,6 +954,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   const regenerateThreadTitle = useOrchestrationCommand(threadEnvironment.regenerateTitle, {
     reportFailure: false,
   });
+  const openInEditor = useAtomCommand(shellEnvironment.openInEditor, { reportFailure: false });
   const { copyToClipboard: copyPathToClipboard } = useCopyToClipboard<{ path: string }>({
     onError: (error) => {
       toastManager.add(
@@ -1268,12 +1273,23 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     ) => {
       const api = readLocalApi();
       if (!api) return;
+      const canReveal = () =>
+        canUseLocalShellActions(
+          group.environmentId,
+          readRemoteOpenResolution(group.environmentId),
+        ) && readEnvironmentScope(group.environmentId, AuthOrchestrationOperateScope);
+      const revealLabel = canReveal()
+        ? resolveRevealInFileManagerLabel(serverConfigs.get(group.environmentId), messages)
+        : undefined;
       void (async () => {
         const clicked = await settlePromise(() =>
           api.contextMenu.show(
             [
               { id: "new-thread", label: gt("New thread") },
               { id: "copy-path", label: gt("Copy path") },
+              ...(revealLabel === undefined
+                ? []
+                : [{ id: "reveal", label: revealLabel, icon: "folder-tree" }]),
               ...(canPinProject(group)
                 ? [
                     group.pinned
@@ -1295,6 +1311,26 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
           case "copy-path":
             copyPathToClipboard(group.workspaceRoot, { path: group.workspaceRoot });
             return;
+          case "reveal": {
+            // Access or the connection can change while the menu is open.
+            const result = canReveal()
+              ? await openInEditor({
+                  environmentId: group.environmentId,
+                  input: { cwd: group.workspaceRoot, editor: "file-manager", reveal: true },
+                })
+              : undefined;
+            if (
+              result === undefined ||
+              (result._tag === "Failure" && !isAtomCommandInterrupted(result))
+            ) {
+              toastManager.add({
+                type: "error",
+                title: gt("Unable to reveal project"),
+                description: group.workspaceRoot,
+              });
+            }
+            return;
+          }
           case "pin":
           case "unpin":
             setProjectGroupPinned(group, clicked.value === "pin");
