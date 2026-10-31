@@ -1,6 +1,9 @@
 import type { EnvironmentId, RunId, ThreadId } from "@t3tools/contracts";
 import { assistantCitationsToPlainText } from "@t3tools/shared/assistantCitations";
-import { isAttachmentOnlyBootstrapPrompt } from "@t3tools/shared/composerContextReferences";
+import {
+  isAttachmentOnlyBootstrapPrompt,
+  replaceComposerContextReferences,
+} from "@t3tools/shared/composerContextReferences";
 
 export const REMOVE_QUEUED_MESSAGE_ACCESSIBILITY_LABEL = "Remove queued message";
 
@@ -38,7 +41,12 @@ export function resolveThreadQueueRowControls(input: {
     // Editing and sending keep the original text so quoted citations stay linked.
     displayText: isAttachmentOnlyBootstrapPrompt(input.text)
       ? ""
-      : assistantCitationsToPlainText(input.text),
+      : assistantCitationsToPlainText(
+          replaceComposerContextReferences(input.text, (reference) => reference.label),
+        )
+          // A merged message's later prompts must show in this short preview, not sit below its cut.
+          .replace(/\s+/g, " ")
+          .trim(),
     isEditing,
   };
 }

@@ -535,6 +535,13 @@ export function resolvePromptInjectedEffort(
   return null;
 }
 
+/** A provider runs a slash command only when it opens the prompt; any token without a second slash names one. */
+export function isSlashCommandPrompt(text: string): boolean {
+  return /^\/[^\s/]+(?:\s|$)/u.test(text.trimStart());
+}
+
+const ULTRATHINK_PROMPT_LABEL = "Ultrathink:";
+
 export function applyClaudePromptEffortPrefix(
   text: string,
   effort: string | null | undefined,
@@ -543,12 +550,18 @@ export function applyClaudePromptEffortPrefix(
   if (!trimmed) {
     return trimmed;
   }
-  // Prefixing slash commands prevents Claude invocation; command names allow any token without a second slash.
-  if (effort !== "ultrathink" || /^\/[^\s/]+(?:\s|$)/u.test(trimmed)) {
+  // Prefixing slash commands prevents Claude invocation.
+  if (effort !== "ultrathink" || isSlashCommandPrompt(trimmed)) {
     return trimmed;
   }
-  if (trimmed.startsWith("Ultrathink:")) {
+  if (trimmed.startsWith(ULTRATHINK_PROMPT_LABEL)) {
     return trimmed;
   }
-  return `Ultrathink:\n${trimmed}`;
+  return `${ULTRATHINK_PROMPT_LABEL}\n${trimmed}`;
+}
+
+/** Undoes `applyClaudePromptEffortPrefix`. Other text starting with the word stays, since the user typed it. */
+export function stripClaudePromptEffortPrefix(text: string): string {
+  const prefix = `${ULTRATHINK_PROMPT_LABEL}\n`;
+  return text.startsWith(prefix) ? text.slice(prefix.length) : text;
 }

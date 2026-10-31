@@ -58,7 +58,7 @@ vi.mock("../../state/threads", async () => {
       quietThreadAtom: (ref: ScopedThreadRef) =>
         Atom.make((get) => {
           const runs = get(mocks.threadRuns(key(ref)));
-          return runs === null ? null : { projection: { runs } };
+          return runs === null ? null : { projection: { runs, messages: [] } };
         }),
     },
     environmentThreadShells: {

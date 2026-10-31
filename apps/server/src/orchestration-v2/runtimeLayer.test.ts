@@ -9,6 +9,7 @@ import { assert, it } from "@effect/vitest";
 import { vi } from "vite-plus/test";
 import {
   type ApplicationStoredEvent,
+  type ChatAttachment,
   CheckpointId,
   CheckpointRef,
   CommandId,
@@ -22,6 +23,7 @@ import {
   type OrchestrationV2Run,
   type OrchestrationV2ShellSnapshot,
   type OrchestrationV2RuntimeRequest,
+  type OrchestrationV2ThreadProjection,
   ProjectId,
   type PullRequestDetail,
   type PullRequestComment,
@@ -5347,6 +5349,136 @@ it.layer(layerTest)("OrchestrationV2LayerLive lifecycle", (it) => {
         ordinals,
         ordinals.toSorted((left, right) => left - right),
       );
+    }),
+  );
+
+  it.effect("merges queued messages without sending or reordering them", () =>
+    Effect.gen(function* () {
+      const orchestrator = yield* Orchestrator.OrchestratorV2;
+      const eventSink = yield* EventSink.EventSinkV2;
+      const threadId = ThreadId.make("runtime-layer-queue-merge-thread");
+      const messageId = (key: string) => MessageId.make(`runtime-layer-queue-merge-${key}`);
+      const attachment = (id: string): ChatAttachment => ({
+        type: "file",
+        id,
+        name: `${id}.txt`,
+        mimeType: "text/plain",
+        sizeBytes: 1,
+      });
+
+      yield* orchestrator.dispatch({
+        type: "thread.create",
+        createdBy: "user",
+        creationSource: "web",
+        commandId: CommandId.make("runtime-layer-queue-merge-create"),
+        threadId,
+        projectId: ProjectId.make("runtime-layer-queue-merge-project"),
+        title: "Queue merge",
+        modelSelection,
+        runtimeMode: "full-access",
+        interactionMode: "default",
+        branch: null,
+        worktreePath: process.cwd(),
+      });
+      const send = (key: string, attachments: ReadonlyArray<ChatAttachment> = []) =>
+        orchestrator.dispatch({
+          type: "message.dispatch",
+          createdBy: "user",
+          creationSource: "web",
+          commandId: CommandId.make(`runtime-layer-queue-merge-send-${key}`),
+          threadId,
+          messageId: messageId(key),
+          text: key,
+          attachments,
+          modelSelection,
+          dispatchMode:
+            key === "prompt" ? { type: "start_immediately" } : { type: "queue_after_active" },
+        });
+      yield* send("prompt");
+      yield* send("a", [attachment("file-a")]);
+      yield* send("b", [attachment("file-b")]);
+      yield* send("/compact");
+      yield* send("c");
+      yield* send("d");
+
+      const merge = (key: string) =>
+        orchestrator.dispatch({
+          type: "queued-run.merge",
+          commandId: CommandId.make(`runtime-layer-queue-merge-${key}`),
+          threadId,
+        });
+      const runFor = (key: string, projection: OrchestrationV2ThreadProjection) => {
+        const run = projection.runs.find((candidate) => candidate.userMessageId === messageId(key));
+        assert.isDefined(run);
+        return run;
+      };
+      const before = yield* orchestrator.getThreadProjection(threadId);
+      yield* merge("first");
+      const merged = yield* orchestrator.getThreadProjection(threadId);
+
+      const messageFor = (key: string) =>
+        merged.messages.find((candidate) => candidate.id === messageId(key));
+      assert.equal(messageFor("a")?.text, "a\n\nb");
+      assert.deepEqual(
+        messageFor("a")?.attachments.map((item) => item.id),
+        ["file-a", "file-b"],
+      );
+      assert.equal(messageFor("c")?.text, "c\n\nd");
+      assert.equal(messageFor("/compact")?.text, "/compact");
+      for (const key of ["a", "/compact", "c"]) {
+        assert.equal(runFor(key, merged).status, "queued");
+        assert.equal(runFor(key, merged).queuePosition, runFor(key, before).queuePosition);
+      }
+      for (const key of ["b", "d"]) {
+        const run = runFor(key, merged);
+        assert.equal(run.status, "cancelled");
+        assert.isNull(run.queuePosition);
+        assert.equal(
+          merged.attempts.find((candidate) => candidate.id === run.activeAttemptId)?.status,
+          "cancelled",
+        );
+        assert.equal(
+          merged.nodes.find((candidate) => candidate.id === run.rootNodeId)?.status,
+          "cancelled",
+        );
+      }
+      assert.equal(runFor("prompt", merged).status, runFor("prompt", before).status);
+
+      // Merging a merged queue succeeds and changes nothing, and a retry replays its receipt.
+      const sequence = yield* orchestrator.getThreadEventSequence(threadId);
+      assert.isEmpty((yield* merge("again")).storedEvents);
+      assert.equal(yield* orchestrator.getThreadEventSequence(threadId), sequence);
+      assert.isTrue((yield* merge("first")).replayed);
+
+      // The survivor keeps its place, so it is what the queue delivers next.
+      const startedRunIds = yield* Queue.unbounded<RunId>();
+      const afterSequence = yield* orchestrator.getThreadEventSequence(threadId);
+      yield* eventSink.stream({ threadId, afterSequence }).pipe(
+        Stream.runForEach((stored) =>
+          stored.event.type === "run.updated" && stored.event.payload.status === "starting"
+            ? Queue.offer(startedRunIds, stored.event.payload.id)
+            : Effect.void,
+        ),
+        Effect.forkScoped,
+      );
+      yield* Effect.yieldNow;
+      const prompt = runFor("prompt", merged);
+      const now = yield* DateTime.now;
+      yield* eventSink.write({
+        events: [
+          {
+            id: EventId.make("runtime-layer-queue-merge-prompt-completed"),
+            type: "run.updated",
+            threadId,
+            runId: prompt.id,
+            ...(prompt.rootNodeId === null ? {} : { nodeId: prompt.rootNodeId }),
+            providerInstanceId: prompt.providerInstanceId,
+            occurredAt: now,
+            payload: { ...prompt, status: "completed", startedAt: now, completedAt: now },
+          },
+        ],
+      });
+      assert.equal(yield* Queue.take(startedRunIds), runFor("a", merged).id);
     }),
   );
 

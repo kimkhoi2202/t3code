@@ -78,6 +78,7 @@ import {
 } from "@t3tools/contracts";
 import { modelSelectionsEqual } from "@t3tools/shared/model";
 import { modelSwitchSince } from "./modelSwitch.ts";
+import { mergeQueuedMessages, planQueuedRunMerge } from "@t3tools/shared/queuedRunMerge";
 import { recordThreadOpen } from "@t3tools/shared/paletteSearch";
 import {
   backgroundWorkHoldsCompletion,
@@ -598,6 +599,7 @@ function commandThreadId(command: OrchestrationV2ServerCommand): ThreadId {
     case "queue.resume":
     case "queued-run.reorder":
     case "queued-run.cancel":
+    case "queued-run.merge":
     case "queued-run.edit":
     case "runtime-request.respond":
     case "runtime-request.delivery.fail":
@@ -10042,6 +10044,112 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
     );
   });
 
+  const emitQueuedRunCancelled = Effect.fn("Orchestrator.emitQueuedRunCancelled")(
+    function* (input: {
+      readonly command: OrchestrationV2ServerCommand;
+      readonly events: Ref.Ref<Array<OrchestrationV2DomainEvent>>;
+      readonly projection: Pick<OrchestrationV2ThreadProjection, "nodes" | "attempts">;
+      readonly run: OrchestrationV2Run;
+      readonly now: DateTime.Utc;
+    }) {
+      const { projection, run, now } = input;
+      const rootNode =
+        run.rootNodeId === null
+          ? undefined
+          : projection.nodes.find((candidate) => candidate.id === run.rootNodeId);
+      const attempt =
+        run.activeAttemptId === null
+          ? undefined
+          : projection.attempts.find((candidate) => candidate.id === run.activeAttemptId);
+      const emitEvent = emit(input.events, input.command);
+      yield* emitEvent({
+        type: "run.updated",
+        threadId: run.threadId,
+        runId: run.id,
+        ...(run.rootNodeId === null ? {} : { nodeId: run.rootNodeId }),
+        providerInstanceId: run.providerInstanceId,
+        occurredAt: now,
+        payload: {
+          ...run,
+          status: "cancelled",
+          queuePosition: null,
+          completedAt: now,
+        },
+      });
+      if (attempt !== undefined && rootNode !== undefined) {
+        yield* emitEvent({
+          type: "run-attempt.updated",
+          threadId: run.threadId,
+          runId: run.id,
+          nodeId: rootNode.id,
+          providerInstanceId: run.providerInstanceId,
+          occurredAt: now,
+          payload: {
+            ...attempt,
+            status: "cancelled",
+            completedAt: now,
+          },
+        });
+      }
+      if (rootNode !== undefined) {
+        yield* emitEvent({
+          type: "node.updated",
+          threadId: run.threadId,
+          runId: run.id,
+          nodeId: rootNode.id,
+          providerInstanceId: run.providerInstanceId,
+          occurredAt: now,
+          payload: {
+            ...rootNode,
+            status: "cancelled",
+            completedAt: now,
+          },
+        });
+      }
+    },
+  );
+
+  const emitQueuedMessageContent = Effect.fn("Orchestrator.emitQueuedMessageContent")(
+    function* (input: {
+      readonly command: OrchestrationV2ServerCommand;
+      readonly events: Ref.Ref<Array<OrchestrationV2DomainEvent>>;
+      readonly projection: Pick<OrchestrationV2ThreadProjection, "turnItems">;
+      readonly run: OrchestrationV2Run;
+      readonly message: OrchestrationV2ConversationMessage;
+      readonly content: Partial<
+        Pick<OrchestrationV2ConversationMessage, "attachments" | "context">
+      > &
+        Pick<OrchestrationV2ConversationMessage, "text">;
+      readonly now: DateTime.Utc;
+    }) {
+      const { projection, run, message, content, now } = input;
+      const emitEvent = emit(input.events, input.command);
+      yield* emitEvent({
+        type: "message.updated",
+        threadId: run.threadId,
+        runId: run.id,
+        ...(run.rootNodeId === null ? {} : { nodeId: run.rootNodeId }),
+        providerInstanceId: run.providerInstanceId,
+        occurredAt: now,
+        payload: withoutGuestAttribution({ ...message, ...content, updatedAt: now }),
+      });
+      const turnItem = projection.turnItems.find(
+        (candidate) => candidate.type === "user_message" && candidate.messageId === message.id,
+      );
+      if (turnItem !== undefined && turnItem.type === "user_message") {
+        yield* emitEvent({
+          type: "turn-item.updated",
+          threadId: run.threadId,
+          runId: run.id,
+          ...(run.rootNodeId === null ? {} : { nodeId: run.rootNodeId }),
+          providerInstanceId: run.providerInstanceId,
+          occurredAt: now,
+          payload: withoutGuestAttribution({ ...turnItem, ...content, updatedAt: now }),
+        });
+      }
+    },
+  );
+
   const dispatchQueuedRunCancel = Effect.fn("Orchestrator.dispatchQueuedRunCancel")(function* (
     command: Extract<OrchestrationV2Command, { readonly type: "queued-run.cancel" }>,
     events: Ref.Ref<Array<OrchestrationV2DomainEvent>>,
@@ -10074,72 +10182,56 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
       });
       return;
     }
-    const queuedRootNode =
-      queuedRun.rootNodeId === null
-        ? undefined
-        : projection.nodes.find((candidate) => candidate.id === queuedRun.rootNodeId);
-    const queuedAttempt =
-      queuedRun.activeAttemptId === null
-        ? undefined
-        : projection.attempts.find((candidate) => candidate.id === queuedRun.activeAttemptId);
-
     const now = yield* DateTime.now;
-    const emitEvent = emit(events, command);
-    yield* emitEvent({
-      type: "run.updated",
-      threadId: command.threadId,
-      runId: queuedRun.id,
-      ...(queuedRun.rootNodeId === null ? {} : { nodeId: queuedRun.rootNodeId }),
-      providerInstanceId: queuedRun.providerInstanceId,
-      occurredAt: now,
-      payload: {
-        ...queuedRun,
-        status: "cancelled",
-        queuePosition: null,
-        completedAt: now,
-      },
-    });
-    if (queuedAttempt !== undefined && queuedRootNode !== undefined) {
-      yield* emitEvent({
-        type: "run-attempt.updated",
-        threadId: command.threadId,
-        runId: queuedRun.id,
-        nodeId: queuedRootNode.id,
-        providerInstanceId: queuedRun.providerInstanceId,
-        occurredAt: now,
-        payload: {
-          ...queuedAttempt,
-          status: "cancelled",
-          completedAt: now,
-        },
-      });
-    }
-    if (queuedRootNode !== undefined) {
-      yield* emitEvent({
-        type: "node.updated",
-        threadId: command.threadId,
-        runId: queuedRun.id,
-        nodeId: queuedRootNode.id,
-        providerInstanceId: queuedRun.providerInstanceId,
-        occurredAt: now,
-        payload: {
-          ...queuedRootNode,
-          status: "cancelled",
-          completedAt: now,
-        },
-      });
-    }
+    yield* emitQueuedRunCancelled({ command, events, projection, run: queuedRun, now });
     const guest = queuedMessage?.context?.guest;
     if (guest !== undefined) {
       const thread = guestShareAfterCancelledSend(projection.thread, guest, now);
       if (thread !== projection.thread) {
-        yield* emitEvent({
+        yield* emit(
+          events,
+          command,
+        )({
           type: "thread.guest-share-updated",
           threadId: command.threadId,
           providerInstanceId: thread.providerInstanceId,
           occurredAt: now,
           payload: thread,
         });
+      }
+    }
+  });
+
+  const dispatchQueuedRunMerge = Effect.fn("Orchestrator.dispatchQueuedRunMerge")(function* (
+    command: Extract<OrchestrationV2Command, { readonly type: "queued-run.merge" }>,
+    events: Ref.Ref<Array<OrchestrationV2DomainEvent>>,
+  ) {
+    const projection = yield* projectionStore
+      .getThreadRecords(command.threadId, ["runs", "messages", "nodes", "attempts", "turnItems"], {
+        turnItemTypes: ["user_message"],
+        messageRoles: ["user"],
+      })
+      .pipe(Effect.mapError(() => new OrchestratorProjectionError({ threadId: command.threadId })));
+    const groups = planQueuedRunMerge(
+      queuedRunsInDeliveryOrder(projection).map((run) => ({
+        run,
+        message: projection.messages.find((candidate) => candidate.id === run.userMessageId),
+      })),
+    );
+    const now = yield* DateTime.now;
+    for (const group of groups) {
+      const [survivor, ...absorbed] = group;
+      yield* emitQueuedMessageContent({
+        command,
+        events,
+        projection,
+        run: survivor.run,
+        message: survivor.message,
+        content: mergeQueuedMessages(group.map(({ message }) => message)),
+        now,
+      });
+      for (const { run } of absorbed) {
+        yield* emitQueuedRunCancelled({ command, events, projection, run, now });
       }
     }
   });
@@ -10200,46 +10292,19 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
       { text: command.text, attachments: command.attachments ?? queuedMessage.attachments },
       queuedRun.providerInstanceId,
     );
-    const queuedTurnItem = projection.turnItems.find(
-      (candidate) => candidate.type === "user_message" && candidate.messageId === queuedMessage.id,
-    );
-
-    const now = yield* DateTime.now;
-    const emitEvent = emit(events, command);
-    const editedAttachments =
-      command.attachments === undefined ? {} : { attachments: command.attachments };
-    yield* emitEvent({
-      type: "message.updated",
-      threadId: command.threadId,
-      runId: queuedRun.id,
-      ...(queuedRun.rootNodeId === null ? {} : { nodeId: queuedRun.rootNodeId }),
-      providerInstanceId: queuedRun.providerInstanceId,
-      occurredAt: now,
-      payload: withoutGuestAttribution({
-        ...queuedMessage,
+    yield* emitQueuedMessageContent({
+      command,
+      events,
+      projection,
+      run: queuedRun,
+      message: queuedMessage,
+      content: {
         text: command.text,
-        ...editedAttachments,
+        ...(command.attachments === undefined ? {} : { attachments: command.attachments }),
         ...(command.context ? { context: command.context } : {}),
-        updatedAt: now,
-      }),
+      },
+      now: yield* DateTime.now,
     });
-    if (queuedTurnItem !== undefined && queuedTurnItem.type === "user_message") {
-      yield* emitEvent({
-        type: "turn-item.updated",
-        threadId: command.threadId,
-        runId: queuedRun.id,
-        ...(queuedRun.rootNodeId === null ? {} : { nodeId: queuedRun.rootNodeId }),
-        providerInstanceId: queuedRun.providerInstanceId,
-        occurredAt: now,
-        payload: withoutGuestAttribution({
-          ...queuedTurnItem,
-          text: command.text,
-          ...editedAttachments,
-          ...(command.context ? { context: command.context } : {}),
-          updatedAt: now,
-        }),
-      });
-    }
   });
 
   const subagentCount = (threadId: ThreadId) =>
@@ -13686,6 +13751,9 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
       case "queued-run.cancel":
         yield* dispatchQueuedRunCancel(command, events);
         break;
+      case "queued-run.merge":
+        yield* dispatchQueuedRunMerge(command, events);
+        break;
       case "queued-run.edit":
         yield* dispatchQueuedRunEdit(command, events);
         break;
@@ -13851,6 +13919,8 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
           command.type === "subagent.stop" ||
           // Closing a share again, or after it ended, is not an error.
           command.type === "thread.guest-share.close" ||
+          // Neither is merging a queue with nothing left to merge.
+          command.type === "queued-run.merge" ||
           (command.type === "thread.delete" && command.onlyIfUnused === true),
         (_planned) =>
           new OrchestratorDispatchError({

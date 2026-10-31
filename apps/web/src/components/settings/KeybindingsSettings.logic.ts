@@ -376,6 +376,7 @@ export function commandLabel(command: KeybindingCommand): string {
   if (command === "composer.dictation") return "Composer: Start or Finish Dictation";
   if (command === "thread.steerQueuedMessage") return "Queue: Send First Queued Message";
   if (command === "thread.editQueuedMessage") return "Queue: Edit Last Queued Message";
+  if (command === "thread.mergeQueuedMessages") return "Queue: Merge Queued Messages";
   if (command === "thread.copyReference") return "Pull Request: Copy Link or Thread";
   if (command === "thread.switcher.next") return "Thread Switcher: Next Recent Thread";
   if (command === "thread.switcher.previous") return "Thread Switcher: Previous Recent Thread";

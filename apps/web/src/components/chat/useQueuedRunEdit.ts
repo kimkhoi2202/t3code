@@ -2,6 +2,7 @@ import { useAtomValue } from "@effect/atom-react";
 import {
   makeQueuedRunEditStore,
   makeQueuedRunsAtom,
+  queuedRunsForEdit,
 } from "@t3tools/client-runtime/queued-run-edit";
 import type { ThreadStructure } from "@t3tools/client-runtime/state/shell";
 import {
@@ -235,6 +236,9 @@ export function useQueuedRunEdit(input: {
     store.clearComposerContent(target);
     store.setPrompt(target, text);
     const threadRef = { environmentId, threadId: activeThreadId };
+    const message = serverProjection?.messages.find(
+      (candidate) => candidate.id === request.messageId,
+    );
     queuedRunEdits.begin(
       editKey,
       {
@@ -243,20 +247,24 @@ export function useQueuedRunEdit(input: {
         messageId: request.messageId,
         originalText: text,
         existingAttachments: request.attachments,
-        context: serverProjection?.messages.find((message) => message.id === request.messageId)
-          ?.context,
+        context: message?.context,
       },
       {
         runs: makeQueuedRunsAtom({
           threadId: activeThreadId,
           snapshot: threadEnvironment.snapshotAtom(environmentId),
           detailStatus: environmentThreadDetails.statusAtom(threadRef),
-          runs: Atom.make(
-            (get) =>
-              get(environmentThreadDetails.quietThreadAtom(threadRef))?.projection.runs ?? null,
-          ),
+          runs: Atom.make((get) => {
+            const projection = get(environmentThreadDetails.quietThreadAtom(threadRef))?.projection;
+            return projection === undefined
+              ? null
+              : queuedRunsForEdit(projection, {
+                  messageId: request.messageId,
+                  updatedAt: message?.updatedAt,
+                });
+          }),
         }),
-        // The run started or was cancelled from another client. A changed
+        // The run started, was cancelled, or changed from another client. A changed
         // edit moves into the thread's own draft when that draft is empty;
         // otherwise it is dropped. Edits outlive navigation, so the toast is
         // unscoped and names the thread: the user may be anywhere by now.
@@ -274,7 +282,7 @@ export function useQueuedRunEdit(input: {
           toastManager.add(
             stackedThreadToast({
               type: recovery === "kept" ? "info" : "warning",
-              title: "Queued message is no longer queued",
+              title: "Queued message changed",
               description:
                 recovery === "kept"
                   ? `Your unsaved edit${where} was kept in the composer.`

@@ -3278,6 +3278,11 @@ export const OrchestrationV2Command = Schema.Union([
     runId: RunId,
   }),
   Schema.Struct({
+    type: Schema.Literal("queued-run.merge"),
+    commandId: CommandId,
+    threadId: ThreadId,
+  }),
+  Schema.Struct({
     type: Schema.Literal("queued-run.edit"),
     context: Schema.optional(OrchestrationMessageContext),
     commandId: CommandId,

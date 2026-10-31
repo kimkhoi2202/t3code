@@ -248,13 +248,21 @@ Press **Resume** in an empty composer to continue. **Resume** also continues a s
 run or one that hit a usage limit, even with nothing queued. Sending a new message also resumes the queue, unless it steers a turn that is already
 running. You can edit or remove held messages without starting them.
 
+**Merge queued messages** turns the queue into one queued message without sending anything. Text,
+quotes, attachments, and context chips all carry over, in order, and the result takes the first
+message's place. Some messages stay separate, and nothing moves past them: commands such as
+`/compact`, messages from guests, agents, or automations, and messages set to a different model or
+effort. A message that would make the merged one too long also starts a new one. To change a merged
+message, edit it; a merge can't be undone. On web and desktop the shortcut is `mod+Shift+U`; change
+it under **Queue: Merge Queued Messages** in **Settings → Keybindings**.
+
 The pencil on a queued message opens it in the composer for editing. The original message
 stays in the queue until you save, and it is highlighted while you edit. The message's
 attachments appear above the text with a remove control, and new images can be added the usual way.
 The checkmark saves the queued message in place; **Cancel** next to it leaves it unchanged. Whatever
 you had typed in the composer before starting the edit is restored afterwards. If the queued
-message starts or is removed while you are editing, the edit ends: changed content moves into the
-composer when it is empty, and is discarded otherwise.
+message starts, is removed, or is changed from another device while you are editing, the edit ends:
+changed content moves into the composer when it is empty, and is discarded otherwise.
 
 ## Commands and skills
 

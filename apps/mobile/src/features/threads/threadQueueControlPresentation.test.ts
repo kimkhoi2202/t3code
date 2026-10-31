@@ -47,6 +47,17 @@ describe("threadQueueControlPresentation", () => {
     );
   });
 
+  it("previews every prompt of a merged message, with context chips as their labels", () => {
+    const controls = resolveThreadQueueRowControls({
+      busy: false,
+      canPromoteToSteer: true,
+      canSendNow: false,
+      text: "First prompt\n\n[notes.txt](t3-context://v1/file/file_1) second prompt",
+    });
+
+    expect(controls.displayText).toBe("First prompt notes.txt second prompt");
+  });
+
   it("keeps the row already open in the composer from being reopened or steered", () => {
     const editing = resolveThreadQueueRowControls({
       busy: false,

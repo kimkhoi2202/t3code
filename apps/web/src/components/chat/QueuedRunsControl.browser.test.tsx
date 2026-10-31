@@ -111,6 +111,41 @@ it("previews assistant quotes as readable text and preserves the citation when e
   );
 });
 
+it("merges only while nothing else is changing the queue", async () => {
+  setup();
+  state.projection = { projection: { messages: [] } };
+  state.workflow = {
+    activeRun: null,
+    canMergeQueuedRuns: true,
+    queuedRuns: ["first", "second"].map((id) => ({
+      run: { id: `run:${id}`, userMessageId: `message:${id}` },
+      text: id,
+      attachments: [],
+    })),
+  };
+  const mergeButton = page.getByRole("button", { name: "Merge queued messages", exact: true });
+
+  await using screen = await renderQueue();
+  await expect.element(mergeButton).toBeEnabled();
+
+  await screen.rerender(<QueuedRunsControl {...baseProps} editingRunId={"run:first" as never} />);
+  await expect.element(mergeButton).toBeDisabled();
+
+  await screen.rerender(
+    <QueuedRunsControl
+      {...baseProps}
+      optimisticMessages={[
+        { id: "message:saving" as never, inputIntent: "queued_turn", text: "saving" } as never,
+      ]}
+    />,
+  );
+  await expect.element(mergeButton).toBeDisabled();
+
+  state.workflow = { ...(state.workflow as object), canMergeQueuedRuns: false };
+  await screen.rerender(<QueuedRunsControl {...baseProps} />);
+  await expect.element(mergeButton).toBeDisabled();
+});
+
 it("shows who sent a queued message and folds automation and agent prompts", async () => {
   setup();
   const message = (id: string, fields: Record<string, unknown>) => ({

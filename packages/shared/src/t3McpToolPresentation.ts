@@ -303,6 +303,7 @@ const T3_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
     "queue-cancel",
   ),
   t3_queue_reorder: tool(["Reorder", "Reordering", "Reordered", "a queued run"], "queue-reorder"),
+  t3_queue_merge: tool(["Merge", "Merging", "Merged", "queued messages"], "queue-edit"),
   t3_queue_promote_to_steer: tool(
     ["Steer with", "Steering with", "Requested steering with", "a queued message"],
     "queue-steer",

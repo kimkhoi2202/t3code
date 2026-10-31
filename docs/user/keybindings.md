@@ -27,6 +27,9 @@ When a thread has queued messages, `mod+Shift+Enter` sends the first one as a st
 while a turn is running, or as a new turn when the thread is stopped. Change it under
 **Queue: Send First Queued Message** in Keybindings.
 
+`mod+Shift+U` merges the thread's queued messages into one without sending them. Change it under
+**Queue: Merge Queued Messages** in Keybindings.
+
 Use `mod+shift+m` to choose a model and `mod+shift+h` to choose a host.
 To step a new thread to the next machine instead of opening the menu, bind
 **Composer: Cycle Host** in Keybindings. It has no default shortcut.

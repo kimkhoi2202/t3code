@@ -287,6 +287,10 @@
       "types": "./src/composerContextReferences.ts",
       "import": "./src/composerContextReferences.ts"
     },
+    "./queuedRunMerge": {
+      "types": "./src/queuedRunMerge.ts",
+      "import": "./src/queuedRunMerge.ts"
+    },
     "./composerContextLegacy": {
       "types": "./src/composerContextLegacy.ts",
       "import": "./src/composerContextLegacy.ts"

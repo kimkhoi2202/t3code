@@ -1,4 +1,5 @@
-import { RunId } from "@t3tools/contracts";
+import { MessageId, RunId } from "@t3tools/contracts";
+import * as DateTime from "effect/DateTime";
 import { Atom, AtomRegistry } from "effect/reactivity";
 import { describe, expect, it } from "vite-plus/test";
 
@@ -6,6 +7,7 @@ import {
   makeQueuedRunEditStore,
   makeQueuedRunsAtom,
   queuedRunEditBlockedReason,
+  queuedRunsForEdit,
   resolveQueuedEditExit,
   type QueuedRunStatus,
 } from "./queuedRunEdit.ts";
@@ -47,6 +49,28 @@ describe("queuedRunEditBlockedReason", () => {
     expect(queuedRunEditBlockedReason({ openQuestionCount: 1 })).toBe(
       "Answer the question to edit queued messages",
     );
+  });
+});
+
+describe("queuedRunsForEdit", () => {
+  const messageId = MessageId.make("message-1");
+  const begun = DateTime.makeUnsafe("2026-10-31T00:00:00.000Z");
+  const later = DateTime.makeUnsafe("2026-10-31T00:00:01.000Z");
+  const runs = queued();
+  const forEdit = (updatedAt: DateTime.Utc, editUpdatedAt: DateTime.Utc | undefined) =>
+    queuedRunsForEdit(
+      { runs, messages: [{ id: messageId, updatedAt }] },
+      { messageId, updatedAt: editUpdatedAt },
+    );
+
+  it("reads the run as out of the queue once its message changed elsewhere", () => {
+    expect(forEdit(later, begun)).toEqual([]);
+  });
+
+  it("keeps the run while the message is as the edit found it, or its version is unknown", () => {
+    expect(forEdit(DateTime.makeUnsafe("2026-10-31T00:00:00.000Z"), begun)).toBe(runs);
+    expect(forEdit(later, undefined)).toBe(runs);
+    expect(queuedRunsForEdit({ runs, messages: [] }, { messageId, updatedAt: begun })).toBe(runs);
   });
 });
 

@@ -293,6 +293,12 @@ export const layer = McpToolAccess.toLayer(ThreadToolkit, {
     ),
     writesThread((input) =>
       Effect.gen(function* () {
+        if (input.action === "merge") {
+          return yield* dispatch(input.threadId, (common) => ({
+            ...common,
+            type: "queued-run.merge",
+          }));
+        }
         const runId = yield* required(input.queuedRunId, "queuedRunId");
         switch (input.action) {
           case "edit": {

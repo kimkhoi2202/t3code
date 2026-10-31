@@ -137,6 +137,34 @@ describe("thread workflows", () => {
     expect(state.canSendNow).toBe(false);
   });
 
+  it("offers a merge only when neighbouring queued messages can become one", () => {
+    const modelSelection = { instanceId: "claude", model: "opus" };
+    const canMerge = (texts: ReadonlyArray<string>) =>
+      deriveThreadQueueWorkflowState({
+        thread: { id: "thread", activeProviderThreadId: null },
+        runs: texts.map((_, index) => ({
+          id: `run-${index}`,
+          status: "queued",
+          userMessageId: `message-${index}`,
+          ordinal: index + 1,
+          modelSelection,
+        })),
+        messages: texts.map((text, index) => ({
+          id: `message-${index}`,
+          text,
+          attachments: [],
+          createdBy: "user",
+        })),
+        providerTurns: [],
+        providerThreads: [],
+        providerSessions: [],
+      } as never).canMergeQueuedRuns;
+
+    expect(canMerge(["only one"])).toBe(false);
+    expect(canMerge(["first", "/compact", "second"])).toBe(false);
+    expect(canMerge(["first", "second"])).toBe(true);
+  });
+
   it.each(["completed", "interrupted", "cancelled", "failed"])(
     "allows sending a held message after a %s turn without a live session",
     (status) => {

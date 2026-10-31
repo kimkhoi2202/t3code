@@ -66,7 +66,7 @@ export function useQueuedRunEdit(threadKey: string | null): QueuedRunEdit | null
 }
 
 /**
- * The run started or was cancelled elsewhere. A changed edit goes back into
+ * The run started, was cancelled, or changed elsewhere. A changed edit goes back into
  * the thread's composer when that is empty; otherwise it is dropped. Either
  * way the thread says so, wherever the user is when it happens.
  */
@@ -101,8 +101,8 @@ function exitQueuedRunEdit(threadKey: string, edit: QueuedRunEdit): void {
   setThreadComposerError(
     threadKey,
     recovery === "kept"
-      ? "That message already started. Your edit is back in the composer."
-      : "That message already started, so the edit was discarded.",
+      ? "That message changed or already started. Your edit is back in the composer."
+      : "That message changed or already started, so the edit was discarded.",
   );
 }
 
