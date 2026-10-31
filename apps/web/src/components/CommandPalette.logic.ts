@@ -5,6 +5,7 @@ import {
   rankSearchGroups,
   scoreSearchTerms,
   scoreThreadSearch,
+  threadRecentUse,
   type SearchMatchHint,
   type SearchRange,
   type ThreadSearchSubject,
@@ -27,6 +28,7 @@ import {
   type SourceControlDiscoveryResult,
   type SourceControlRepositoryInfo,
   THREAD_JUMP_KEYBINDING_COMMANDS,
+  type ThreadId,
 } from "@t3tools/contracts";
 import { filterFilesystemBrowseEntries } from "@t3tools/client-runtime/state/filesystem";
 import { type ReactNode } from "react";
@@ -34,7 +36,28 @@ import { formatRelativeTimeLabel } from "../timestampFormat";
 import { type Project, type SidebarThreadSummary, type Thread } from "../types";
 import { isSidebarHiddenThread } from "./Sidebar.logic";
 
-export const RECENT_THREAD_LIMIT = 12;
+const RECENT_THREAD_LIMIT = 12;
+
+/**
+ * Recent means used recently: written in or opened, whichever is later. The open thread would
+ * always lead that list, so it is left out.
+ */
+export function rankRecentThreadItems<TItem extends CommandPaletteItem>(
+  items: ReadonlyArray<TItem>,
+  activeThread: { readonly environmentId: EnvironmentId; readonly id: ThreadId } | null,
+): TItem[] {
+  const activeThreadValue = activeThread
+    ? `thread:${activeThread.environmentId}:${activeThread.id}`
+    : null;
+  return items
+    .filter((item) => item.value !== activeThreadValue)
+    .toSorted(
+      (left, right) =>
+        (right.threadSearch ? threadRecentUse(right.threadSearch) : 0) -
+        (left.threadSearch ? threadRecentUse(left.threadSearch) : 0),
+    )
+    .slice(0, RECENT_THREAD_LIMIT);
+}
 export const ITEM_ICON_CLASS = "size-4 text-icon-muted";
 export const ADDON_ICON_CLASS = "size-4";
 

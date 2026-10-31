@@ -147,6 +147,15 @@ update an older server to enable it. Select **Retry** if a search fails. It defa
 `mod+f` outside terminals and previews. Press **Enter** or **Shift+Enter** to move between matches,
 and **Escape** to close find.
 
+## Switch between recent threads
+
+In the desktop app, hold `Ctrl` and press `Tab` to list your recent threads, most recent first.
+Keep holding `Ctrl` and press `Tab` to move down or `Shift+Tab` to move up, then release `Ctrl` to
+open the highlighted thread. Escape keeps you where you are. The keys are the same on macOS,
+Windows, and Linux. Browsers keep `Ctrl+Tab` for their own tabs, so on the web bind
+**Thread Switcher: Next Recent Thread** and **Thread Switcher: Previous Recent Thread** to other
+keys in Settings → Keybindings.
+
 ## Precedence
 
 The last rule whose key and condition both match wins, even if it belongs to a

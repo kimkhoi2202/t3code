@@ -127,6 +127,9 @@ export const DEFAULT_KEYBINDINGS: ReadonlyArray<KeybindingRule> = [
   { key: "mod+o", command: "editor.openFavorite" },
   { key: "mod+shift+[", command: "thread.previous" },
   { key: "mod+shift+]", command: "thread.next" },
+  // Browsers keep Ctrl+Tab for their own tabs, so the switcher defaults to the desktop app.
+  { key: "ctrl+tab", command: "thread.switcher.next", when: "isDesktop" },
+  { key: "ctrl+shift+tab", command: "thread.switcher.previous", when: "isDesktop" },
   { key: "mod+shift+c", command: "thread.copyReference", when: "!terminalFocus" },
   { key: "mod+shift+s", command: "thread.settle", when: "!terminalFocus" },
   { key: "mod+shift+p", command: "thread.pin", when: "!terminalFocus" },
