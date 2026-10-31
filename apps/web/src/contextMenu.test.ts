@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { showContextMenuFallback } from "./contextMenuFallback";
+import { showContextMenu } from "./contextMenu";
 
 type FakeListener = (event: FakeDomEvent) => void;
 
@@ -220,7 +220,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("showContextMenuFallback", () => {
+describe("showContextMenu", () => {
   it("ignores a click from the gesture that opened the menu", async () => {
     let enablePointerSelection: ((time: number) => void) | undefined;
     vi.stubGlobal("requestAnimationFrame", (callback: (time: number) => void) => {
@@ -228,7 +228,7 @@ describe("showContextMenuFallback", () => {
       return 0;
     });
 
-    const selectionPromise = showContextMenuFallback([{ id: "rename", label: "Rename" }]);
+    const selectionPromise = showContextMenu([{ id: "rename", label: "Rename" }]);
     const renameButton = findButton("Rename");
 
     renameButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -248,7 +248,7 @@ describe("showContextMenuFallback", () => {
     ({ innerWidth, triggerLeft, submenuLeft }) => {
       vi.stubGlobal("window", { ...window, innerWidth });
 
-      void showContextMenuFallback(
+      void showContextMenu(
         [
           {
             id: "group",
@@ -268,10 +268,26 @@ describe("showContextMenuFallback", () => {
   );
 
   it("shows an item's detail beside its label and reads both to screen readers", () => {
-    void showContextMenuFallback([{ id: "snooze:hour", label: "In 1 hour", detail: "3:00 PM" }]);
+    void showContextMenu([{ id: "snooze:hour", label: "In 1 hour", detail: "3:00 PM" }]);
     const button = findButton("In 1 hour");
 
     expect(button?.textContent).toBe("In 1 hour3:00 PM");
     expect(button?.attributes.get("aria-label")).toBe("In 1 hour, 3:00 PM");
+  });
+
+  it.each([
+    { where: "under the caption buttons moves below them", x: 1200, top: "40px" },
+    { where: "clear of the caption buttons stays at the pointer", x: 100, top: "12px" },
+  ])("a titlebar menu $where", ({ x, top }) => {
+    vi.stubGlobal("navigator", {
+      windowControlsOverlay: {
+        visible: true,
+        getTitlebarAreaRect: () => ({ left: 0, top: 0, right: 1140, bottom: 40 }),
+      },
+    });
+
+    void showContextMenu([{ id: "close", label: "Close tab" }], { x, y: 12 });
+
+    expect((document as unknown as FakeDocument).body.children[0]?.style.top).toBe(top);
   });
 });

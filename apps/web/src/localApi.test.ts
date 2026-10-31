@@ -1,7 +1,7 @@
 import { type ConfirmDialogOptions, type ContextMenuItem } from "@t3tools/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-const showContextMenuFallbackMock =
+const showContextMenuMock =
   vi.fn<
     <T extends string>(
       items: readonly ContextMenuItem<T>[],
@@ -13,8 +13,8 @@ const dismissContextMenuMock = vi.fn<() => void>();
 const requestConfirmDialogMock =
   vi.fn<(message: string, options?: ConfirmDialogOptions) => Promise<boolean> | undefined>();
 
-vi.mock("./contextMenuFallback", () => ({
-  showContextMenuFallback: showContextMenuFallbackMock,
+vi.mock("./contextMenu", () => ({
+  showContextMenu: showContextMenuMock,
   dismissContextMenu: dismissContextMenuMock,
 }));
 

@@ -34,44 +34,12 @@ export interface ContextMenuItem<T extends string = string> {
   children?: readonly ContextMenuItem<T>[];
 }
 
+// T3 Code's own menu focuses its first item however it was opened, so callers' source is unused.
+export type ContextMenuSource = "mouse" | "keyboard";
+
 export type QuitShortcutHintEvent =
   | { readonly state: "down"; readonly mode: Exclude<QuitConfirmationMode, "direct"> }
   | { readonly state: "up" };
-
-export interface ContextMenuItemSchemaType {
-  readonly id: string;
-  readonly label: string;
-  readonly detail?: string;
-  readonly destructive?: boolean;
-  readonly disabled?: boolean;
-  readonly header?: boolean;
-  readonly icon?: string;
-  readonly separatorBefore?: boolean;
-  readonly checked?: boolean;
-  readonly children?: readonly ContextMenuItemSchemaType[];
-}
-
-export const ContextMenuItemSchema: Schema.Codec<ContextMenuItemSchemaType> = Schema.Struct({
-  id: Schema.String,
-  label: Schema.String,
-  detail: Schema.optionalKey(Schema.String),
-  destructive: Schema.optionalKey(Schema.Boolean),
-  disabled: Schema.optionalKey(Schema.Boolean),
-  header: Schema.optionalKey(Schema.Boolean),
-  icon: Schema.optionalKey(Schema.String),
-  separatorBefore: Schema.optionalKey(Schema.Boolean),
-  checked: Schema.optionalKey(Schema.Boolean),
-  children: Schema.optionalKey(
-    Schema.Array(
-      Schema.suspend((): Schema.Codec<ContextMenuItemSchemaType> => ContextMenuItemSchema),
-    ),
-  ),
-});
-
-// Native menus opened from the keyboard select their first item, which is what
-// moves a screen reader into the menu. Electron assumes a mouse unless told.
-export const ContextMenuSource = Schema.Literals(["mouse", "keyboard"]);
-export type ContextMenuSource = typeof ContextMenuSource.Type;
 
 export type DesktopUpdateStatus =
   | "disabled"
@@ -1174,11 +1142,6 @@ export interface DesktopBridge {
   pickProjectFavicon: (initialPath?: string) => Promise<string | null>;
   pickThemeFiles: () => Promise<readonly PickedThemeFile[] | null>;
   setTheme: (theme: DesktopTheme) => Promise<void>;
-  showContextMenu: <T extends string>(
-    items: readonly ContextMenuItem<T>[],
-    position?: { x: number; y: number },
-    source?: ContextMenuSource,
-  ) => Promise<T | null>;
   receiveProviderAuthCallback: (authorizationUrl: string) => Promise<string>;
   cancelProviderAuthCallback: (authorizationUrl: string) => Promise<void>;
   startFileDrag: (input: { environmentId: EnvironmentId; path: string }) => Promise<boolean>;

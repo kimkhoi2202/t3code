@@ -198,20 +198,7 @@ it("removes host actions after revocation while keeping file preview and copying
   expect(state.openEditor).not.toHaveBeenCalled();
 });
 
-it.each(["[Docs](https://example.com/docs)", "[Readme](docs/readme.md)"])(
-  "tells the native menu for %s whether the keyboard opened it",
-  async (text) => {
-    using _setup = setup();
-    await using screen = await renderMarkdown(text);
-    screen.anchor().focus();
-    await userEvent.keyboard("{Shift>}{F10}{/Shift}");
-    await vi.waitFor(() => expect(state.choose.mock.lastCall?.[2]).toBe("keyboard"));
-    await userEvent.click(screen.anchor(), { button: "right" });
-    await vi.waitFor(() => expect(state.choose.mock.lastCall?.[2]).toBe("mouse"));
-  },
-);
-
-it("does not launch an editor after revocation during a native context menu", async () => {
+it("does not launch an editor after revocation while its context menu is open", async () => {
   using _setup = setup();
   let choose: (action: string) => void = () => {
     throw new Error("Menu not opened");
@@ -255,7 +242,7 @@ it("does not reveal a file after revocation during its workspace lookup", async 
 });
 
 it.each(["link-to-thread", "unlink-from-thread"])(
-  "rechecks %s after a native context menu returns",
+  "rechecks %s after a context menu returns",
   async (action) => {
     using _setup = setup();
     state.pullRequests = action === "unlink-from-thread" ? [linkedPullRequest] : [];

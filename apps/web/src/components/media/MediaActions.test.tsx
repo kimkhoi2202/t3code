@@ -164,7 +164,7 @@ it.each(["workspace-file", "media-file"] as const)(
 );
 
 it.each(["save", "copy-image", "open-file"])(
-  "rechecks access when %s is selected from an already open native menu",
+  "rechecks access when %s is selected from an already open menu",
   async (action) => {
     state.sessions.set(environmentId, granted);
     const choice = deferred<string>();
