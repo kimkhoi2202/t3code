@@ -43,6 +43,7 @@ import {
   useRef,
   useState,
   type ReactNode,
+  type Ref,
   type SyntheticEvent,
 } from "react";
 import {
@@ -70,7 +71,10 @@ import {
   type RememberedTimelinePosition,
   rememberTimelinePosition,
 } from "./timelineScrollAnchoring";
-import { AssistantSelectionToolbar } from "./AssistantSelectionToolbar";
+import {
+  AssistantSelectionToolbar,
+  type AssistantSelectionToolbarHandle,
+} from "./AssistantSelectionToolbar";
 import type { AssistantCitationSourceAnchor } from "~/lib/assistantTextSelection";
 import { type AssistantCitationRequest } from "./AssistantCitationSource";
 import { useAssistantCitationTarget } from "./useAssistantCitationTarget";
@@ -225,6 +229,7 @@ interface MessagesTimelineProps {
     citation: AssistantCitation,
     sourceAnchor: AssistantCitationSourceAnchor,
   ) => boolean;
+  selectionToolbarRef?: Ref<AssistantSelectionToolbarHandle>;
   isWorking: boolean;
   runlessWorkActive?: boolean;
   activeTurnStartedAt?: string | null;
@@ -338,6 +343,7 @@ const ConversationTimeline = memo(function ConversationTimeline({
   citationRequest = null,
   citationHistory = CITED_HISTORY_LOADING,
   onCiteAssistantText,
+  selectionToolbarRef,
   isWorking,
   runlessWorkActive = false,
   activeTurnStartedAt = null,
@@ -1314,6 +1320,7 @@ const ConversationTimeline = memo(function ConversationTimeline({
           >
             {onCiteAssistantText && citationThreadRef ? (
               <AssistantSelectionToolbar
+                ref={selectionToolbarRef}
                 viewport={timelineViewportElement}
                 threadRef={citationThreadRef}
                 onCite={onCiteAssistantText}

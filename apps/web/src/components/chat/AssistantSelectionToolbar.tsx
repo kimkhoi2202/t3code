@@ -5,7 +5,15 @@ import {
   type ScopedThreadRef,
 } from "@t3tools/contracts";
 import { QuoteIcon } from "lucide-react";
-import { use, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  type Ref,
+  use,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import {
   captureAssistantTextSelection,
@@ -20,11 +28,18 @@ import {
 import { Button } from "../ui/button";
 import { BackgroundThreadContext } from "./backgroundThread";
 
+export interface AssistantSelectionToolbarHandle {
+  /** Cites the selection the toolbar is showing; false when there is none to cite. */
+  citeSelection: () => boolean;
+}
+
 export function AssistantSelectionToolbar({
+  ref,
   viewport,
   threadRef,
   onCite,
 }: {
+  ref?: Ref<AssistantSelectionToolbarHandle> | undefined;
   viewport: HTMLElement | null;
   threadRef: ScopedThreadRef;
   onCite: (citation: AssistantCitation, sourceAnchor: AssistantCitationSourceAnchor) => boolean;
@@ -176,18 +191,24 @@ export function AssistantSelectionToolbar({
     };
   }, [backgroundThread, threadRef, viewport]);
 
-  if (!selection) return null;
-  const tooLong = selection.citation.text.length > ASSISTANT_CITATION_MAX_TEXT_LENGTH;
+  const tooLong =
+    selection !== null && selection.citation.text.length > ASSISTANT_CITATION_MAX_TEXT_LENGTH;
   const dismiss = () => {
     actionsRef.current?.cancel();
     setSelection(null);
   };
+  // True whenever there was a selection to cite, even if the composer then declines it.
   const cite = () => {
-    if (tooLong || !onCite(selection.citation, selection.sourceAnchor)) return false;
-    window.getSelection()?.removeAllRanges();
-    dismiss();
+    if (!selection || tooLong) return false;
+    if (onCite(selection.citation, selection.sourceAnchor)) {
+      window.getSelection()?.removeAllRanges();
+      dismiss();
+    }
     return true;
   };
+  useImperativeHandle(ref, () => ({ citeSelection: cite }));
+
+  if (!selection) return null;
   return createPortal(
     <Button
       ref={toolbarRef}
