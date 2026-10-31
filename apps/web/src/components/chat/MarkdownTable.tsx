@@ -1,23 +1,41 @@
-import { T, useGT } from "gt-react";
+import { msg, T, useGT } from "gt-react";
 import { CheckIcon, CopyIcon } from "lucide-react";
 import { useRef, type ComponentProps } from "react";
 
-import { useCopyToClipboard } from "../../hooks/useCopyToClipboard";
+import { canWriteImageToClipboard, useCopyToClipboard } from "../../hooks/useCopyToClipboard";
 import {
   serializeTableElementToCsv,
   serializeTableElementToMarkdown,
 } from "../../markdown-clipboard";
 import { Button } from "../ui/button";
-import { Menu, MenuItem, MenuPopup, MenuTrigger } from "../ui/menu";
+import {
+  Menu,
+  MenuItem,
+  MenuPopup,
+  MenuSub,
+  MenuSubPopup,
+  MenuSubTrigger,
+  MenuTrigger,
+} from "../ui/menu";
 import { ScrollArea } from "../ui/scroll-area";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { reportMarkdownActionFailure } from "./markdownActionFailure";
+import { renderTableImage, type TableImageTheme } from "./markdownTableImage";
 
 export function MarkdownTable({ children, ...props }: ComponentProps<"table">) {
   const gt = useGT();
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const { copyToClipboard, isCopied: copied } = useCopyToClipboard<"markdown" | "csv">({
+  const {
+    copyToClipboard,
+    copyImageToClipboard,
+    isCopied: copied,
+  } = useCopyToClipboard<"markdown" | "csv" | "png">({
     timeout: 1200,
+    target: {
+      target: "table",
+      unavailableMessage: msg("Clipboard API is unavailable while copying table."),
+      failureMessage: msg("Failed to copy table to the clipboard."),
+    },
     onError: (cause, format) =>
       reportMarkdownActionFailure({ operation: "copy-table", format }, cause),
   });
@@ -32,6 +50,12 @@ export function MarkdownTable({ children, ...props }: ComponentProps<"table">) {
         : serializeTableElementToCsv(table),
       format,
     );
+  };
+
+  const handleCopyImage = (theme: TableImageTheme) => {
+    const table = containerRef.current?.querySelector("table");
+    if (!table) return;
+    copyImageToClipboard(renderTableImage(table, theme), "png");
   };
 
   return (
@@ -68,6 +92,21 @@ export function MarkdownTable({ children, ...props }: ComponentProps<"table">) {
             <MenuItem onClick={() => handleCopy("csv")}>
               <T>Copy as CSV</T>
             </MenuItem>
+            {canWriteImageToClipboard() ? (
+              <MenuSub>
+                <MenuSubTrigger>
+                  <T>Copy as image</T>
+                </MenuSubTrigger>
+                <MenuSubPopup>
+                  <MenuItem onClick={() => handleCopyImage("dark")}>
+                    <T>Dark</T>
+                  </MenuItem>
+                  <MenuItem onClick={() => handleCopyImage("light")}>
+                    <T>Light</T>
+                  </MenuItem>
+                </MenuSubPopup>
+              </MenuSub>
+            ) : null}
           </MenuPopup>
         </Menu>
       </div>

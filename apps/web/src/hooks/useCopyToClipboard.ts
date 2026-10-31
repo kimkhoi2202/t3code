@@ -209,6 +209,30 @@ export async function writeTextToClipboard(
   }
 }
 
+export function canWriteImageToClipboard(): boolean {
+  return (
+    typeof navigator !== "undefined" &&
+    typeof navigator.clipboard?.write === "function" &&
+    typeof ClipboardItem !== "undefined"
+  );
+}
+
+/** Takes a pending PNG so the write starts inside the user's gesture, as Safari requires. */
+export async function writeImageToClipboard(
+  png: Promise<Blob>,
+  target?: ClipboardTarget,
+): Promise<boolean> {
+  if (!canWriteImageToClipboard()) {
+    throw new ClipboardApiUnavailableError(clipboardTargetFields(target, "unavailable"));
+  }
+  try {
+    await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
+    return true;
+  } catch (cause) {
+    throw new ClipboardWriteError({ ...clipboardTargetFields(target, "failure"), cause });
+  }
+}
+
 export async function readTextFromClipboard(target?: ClipboardTarget): Promise<string> {
   if (
     typeof window === "undefined" ||
@@ -237,11 +261,15 @@ export function useCopyToClipboard<TContext = void>({
   onCopy?: (ctx: TContext) => void;
   onError?: (error: Error, ctx: TContext) => void;
   extraFlavors?: Readonly<Record<string, string>>;
-} = {}): { copyToClipboard: (value: string, ctx: TContext) => void; isCopied: boolean } {
+} = {}): {
+  copyToClipboard: (value: string, ctx: TContext) => void;
+  copyImageToClipboard: (png: Promise<Blob>, ctx: TContext) => void;
+  isCopied: boolean;
+} {
   const [isCopied, setIsCopied] = React.useState(false);
   const timeoutIdRef = React.useRef<NodeJS.Timeout | null>(null);
-  const copyToClipboard = useStableCallback((value: string, ctx: TContext): void => {
-    void writeTextToClipboard(value, target, extraFlavors).then(
+  const settleCopy = (write: Promise<boolean>, ctx: TContext): void => {
+    void write.then(
       (didCopy) => {
         if (!didCopy) return;
         if (timeoutIdRef.current) {
@@ -263,7 +291,13 @@ export function useCopyToClipboard<TContext = void>({
         onError?.(error, ctx);
       },
     );
-  });
+  };
+  const copyToClipboard = useStableCallback((value: string, ctx: TContext): void =>
+    settleCopy(writeTextToClipboard(value, target, extraFlavors), ctx),
+  );
+  const copyImageToClipboard = useStableCallback((png: Promise<Blob>, ctx: TContext): void =>
+    settleCopy(writeImageToClipboard(png, target), ctx),
+  );
 
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- clears the copied-state reset timer on unmount
   React.useEffect(() => {
@@ -274,5 +308,5 @@ export function useCopyToClipboard<TContext = void>({
     };
   }, []);
 
-  return { copyToClipboard, isCopied };
+  return { copyToClipboard, copyImageToClipboard, isCopied };
 }
