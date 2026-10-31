@@ -37,34 +37,6 @@ export type QuitShortcutHintEvent =
   | { readonly state: "down"; readonly mode: Exclude<QuitConfirmationMode, "direct"> }
   | { readonly state: "up" };
 
-export interface ContextMenuItemSchemaType {
-  readonly id: string;
-  readonly label: string;
-  readonly destructive?: boolean;
-  readonly disabled?: boolean;
-  readonly header?: boolean;
-  readonly icon?: string;
-  readonly separatorBefore?: boolean;
-  readonly checked?: boolean;
-  readonly children?: readonly ContextMenuItemSchemaType[];
-}
-
-export const ContextMenuItemSchema: Schema.Codec<ContextMenuItemSchemaType> = Schema.Struct({
-  id: Schema.String,
-  label: Schema.String,
-  destructive: Schema.optionalKey(Schema.Boolean),
-  disabled: Schema.optionalKey(Schema.Boolean),
-  header: Schema.optionalKey(Schema.Boolean),
-  icon: Schema.optionalKey(Schema.String),
-  separatorBefore: Schema.optionalKey(Schema.Boolean),
-  checked: Schema.optionalKey(Schema.Boolean),
-  children: Schema.optionalKey(
-    Schema.Array(
-      Schema.suspend((): Schema.Codec<ContextMenuItemSchemaType> => ContextMenuItemSchema),
-    ),
-  ),
-});
-
 export type DesktopUpdateStatus =
   | "disabled"
   | "idle"
@@ -1104,10 +1076,6 @@ export interface DesktopBridge {
   pickProjectFavicon: (initialPath?: string) => Promise<string | null>;
   pickThemeFiles: () => Promise<readonly PickedThemeFile[] | null>;
   setTheme: (theme: DesktopTheme) => Promise<void>;
-  showContextMenu: <T extends string>(
-    items: readonly ContextMenuItem<T>[],
-    position?: { x: number; y: number },
-  ) => Promise<T | null>;
   receiveProviderAuthCallback: (authorizationUrl: string) => Promise<string>;
   cancelProviderAuthCallback: (authorizationUrl: string) => Promise<void>;
   openExternal: (url: string) => Promise<boolean>;

@@ -1,5 +1,5 @@
 import type { AnyRouter } from "@tanstack/react-router";
-import { dismissContextMenu } from "../contextMenuFallback";
+import { dismissContextMenu } from "../contextMenu";
 import { useRightPanelStore } from "../rightPanelStore";
 
 const AREA_SELECTOR = "[data-workspace-area]";

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { showContextMenuFallback } from "./contextMenuFallback";
+import { showContextMenu } from "./contextMenu";
 
 type FakeListener = (event: FakeDomEvent) => void;
 
@@ -220,7 +220,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("showContextMenuFallback", () => {
+describe("showContextMenu", () => {
   it("ignores a click from the gesture that opened the menu", async () => {
     let enablePointerSelection: ((time: number) => void) | undefined;
     vi.stubGlobal("requestAnimationFrame", (callback: (time: number) => void) => {
@@ -228,7 +228,7 @@ describe("showContextMenuFallback", () => {
       return 0;
     });
 
-    const selectionPromise = showContextMenuFallback([{ id: "rename", label: "Rename" }]);
+    const selectionPromise = showContextMenu([{ id: "rename", label: "Rename" }]);
     const renameButton = findButton("Rename");
 
     renameButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -236,5 +236,21 @@ describe("showContextMenuFallback", () => {
     renameButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 
     await expect(selectionPromise).resolves.toBe("rename");
+  });
+
+  it.each([
+    { where: "under the caption buttons moves below them", x: 1200, top: "40px" },
+    { where: "clear of the caption buttons stays at the pointer", x: 100, top: "12px" },
+  ])("a titlebar menu $where", ({ x, top }) => {
+    vi.stubGlobal("navigator", {
+      windowControlsOverlay: {
+        visible: true,
+        getTitlebarAreaRect: () => ({ left: 0, top: 0, right: 1140, bottom: 40 }),
+      },
+    });
+
+    void showContextMenu([{ id: "close", label: "Close tab" }], { x, y: 12 });
+
+    expect((document as unknown as FakeDocument).body.children[0]?.style.top).toBe(top);
   });
 });

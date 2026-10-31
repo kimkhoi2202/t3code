@@ -167,7 +167,7 @@ beforeEach(() => {
 
 describe("thread menu permissions", () => {
   it.each(["rename", "regenerate-title", "delete", "pin", "settle", "archive"] as const)(
-    "%s rechecks after the native menu closes",
+    "%s rechecks after the menu closes",
     async (action) => {
       state.granted.add("secondary");
       const choice = deferred<ThreadActionMenuId | null>();

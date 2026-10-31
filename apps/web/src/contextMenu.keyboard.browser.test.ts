@@ -1,9 +1,5 @@
 import { expect, it } from "vite-plus/test";
-import {
-  dismissContextMenu,
-  isContextMenuOpen,
-  showContextMenuFallback,
-} from "./contextMenuFallback";
+import { dismissContextMenu, isContextMenuOpen, showContextMenu } from "./contextMenu";
 
 const items = [
   { id: "heading", label: "Thread actions", header: true },
@@ -45,7 +41,7 @@ const label = () => document.activeElement?.textContent;
 
 it("starts a keyboard-opened menu on its first action and wraps through enabled actions", () => {
   using _fixture = setup();
-  void showContextMenuFallback(items);
+  void showContextMenu(items);
   expect(label()).toBe("Rename");
   press("ArrowUp");
   expect(label()).toBe("Copy");
@@ -59,7 +55,7 @@ it("starts a keyboard-opened menu on its first action and wraps through enabled 
 
 it("opens and cancels one submenu level at a time, then returns to the thread", async () => {
   using fixture = setup();
-  const result = showContextMenuFallback(items);
+  const result = showContextMenu(items);
   press("End");
   const parent = document.activeElement;
   press("ArrowRight");
@@ -78,17 +74,17 @@ it("opens and cancels one submenu level at a time, then returns to the thread", 
 
 it("activates the focused action with Space or Enter", async () => {
   using _fixture = setup();
-  const first = showContextMenuFallback(items);
+  const first = showContextMenu(items);
   press(" ");
   await expect(first).resolves.toBe("rename");
-  const second = showContextMenuFallback(items);
+  const second = showContextMenu(items);
   press("Enter");
   await expect(second).resolves.toBe("rename");
 });
 
 it("closes on Tab and returns focus to the opener so Tab continues from there", async () => {
   using fixture = setup();
-  const result = showContextMenuFallback(items);
+  const result = showContextMenu(items);
   expect(press("Tab").defaultPrevented).toBe(false);
   await expect(result).resolves.toBeNull();
   expect(document.activeElement).toBe(fixture.origin);
@@ -96,7 +92,7 @@ it("closes on Tab and returns focus to the opener so Tab continues from there", 
 
 it("closes without taking focus back when focus moves elsewhere", async () => {
   using _fixture = setup();
-  const result = showContextMenuFallback(items);
+  const result = showContextMenu(items);
   const destination = document.createElement("button");
   document.body.append(destination);
   using _destination = { [Symbol.dispose]: () => destination.remove() };

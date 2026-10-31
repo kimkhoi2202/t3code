@@ -1,5 +1,7 @@
 import type { ContextMenuItem } from "@t3tools/contracts";
 
+import { visibleTitlebarAreaRect } from "./lib/windowControlsOverlay";
+
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 const ICON_PATHS: Record<string, ReadonlyArray<{ tag: string; attrs: Record<string, string> }>> = {
@@ -202,10 +204,16 @@ function clampMenuPosition(menu: HTMLDivElement, preferredLeft: number, preferre
     Math.max(4, preferredLeft),
     Math.max(4, window.innerWidth - rect.width - 4),
   );
-  const top = Math.min(
-    Math.max(4, preferredTop),
-    Math.max(4, window.innerHeight - rect.height - 4),
-  );
+  let top = Math.min(Math.max(4, preferredTop), Math.max(4, window.innerHeight - rect.height - 4));
+  // Native caption buttons draw over the page outside the titlebar area, so keep the menu below them.
+  const titlebar = visibleTitlebarAreaRect();
+  if (
+    titlebar &&
+    top < titlebar.bottom &&
+    (left < titlebar.left || left + rect.width > titlebar.right)
+  ) {
+    top = titlebar.bottom;
+  }
   menu.style.left = `${left}px`;
   menu.style.top = `${top}px`;
 }
@@ -239,7 +247,7 @@ export function dismissContextMenu(restoreFocus = true): void {
   activeContextMenuDismiss = null;
 }
 
-export function showContextMenuFallback<T extends string>(
+export function showContextMenu<T extends string>(
   items: readonly ContextMenuItem<T>[],
   position?: { x: number; y: number },
 ): Promise<T | null> {
@@ -386,8 +394,9 @@ export function showContextMenuFallback<T extends string>(
       closeMenusFromLevel(level);
 
       const menu = document.createElement("div");
+      // Electron drag hit-testing ignores z-index; opt out so rows over the titlebar stay clickable.
       menu.className =
-        "dropdown-glass fixed z-[10000] min-w-32 max-w-sm overflow-hidden rounded-lg bg-clip-padding text-popover-foreground outline-none";
+        "dropdown-glass fixed z-[10000] min-w-32 max-w-sm overflow-hidden rounded-lg bg-clip-padding text-popover-foreground outline-none [-webkit-app-region:no-drag]";
       menu.style.cssText =
         "position:fixed;z-index:10000;min-width:8rem;max-width:24rem;overflow:hidden;border-radius:var(--radius-lg);background-clip:padding-box;color:var(--contrast-popover-foreground);outline:none;pointer-events:auto;";
       menu.style.left = `${preferredLeft}px`;

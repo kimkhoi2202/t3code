@@ -1,7 +1,7 @@
-import type { ConfirmDialogOptions, ContextMenuItem, LocalApi } from "@t3tools/contracts";
+import type { ConfirmDialogOptions, LocalApi } from "@t3tools/contracts";
 
 import { requestConfirmDialog } from "./confirmDialog";
-import { dismissContextMenu, showContextMenuFallback } from "./contextMenuFallback";
+import { dismissContextMenu, showContextMenu } from "./contextMenu";
 import { readBrowserClientSettings, writeBrowserClientSettings } from "./clientPersistenceStorage";
 
 let cachedApi: LocalApi | undefined;
@@ -39,22 +39,11 @@ export function createLocalApi(): LocalApi {
         }
       },
     },
+    // Desktop uses this themed menu too, not native menus, so menus look like the rest of the app.
     contextMenu: {
-      show: async <T extends string>(
-        items: readonly ContextMenuItem<T>[],
-        position?: { x: number; y: number },
-      ): Promise<T | null> => {
-        if (window.desktopBridge) {
-          return window.desktopBridge.showContextMenu(items, position) as Promise<T | null>;
-        }
-        return showContextMenuFallback(items, position);
-      },
-      // Unlike native menus, the DOM fallback needs dismissal when underlying state disappears.
-      close: async () => {
-        if (!window.desktopBridge) {
-          dismissContextMenu();
-        }
-      },
+      show: showContextMenu,
+      // The menu is part of the page, so it needs dismissal when underlying state disappears.
+      close: async () => dismissContextMenu(),
     },
     persistence: {
       getClientSettings: async () => {

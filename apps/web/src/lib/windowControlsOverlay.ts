@@ -29,10 +29,15 @@ function getWindowControlsOverlay(): WindowControlsOverlayLike | null {
   return (navigator as NavigatorWithWindowControlsOverlay).windowControlsOverlay ?? null;
 }
 
+/** The titlebar area beside the native caption buttons, or null when none are drawn over the page. */
+export function visibleTitlebarAreaRect(): DOMRect | null {
+  const overlay = getWindowControlsOverlay();
+  return overlay?.visible ? overlay.getTitlebarAreaRect() : null;
+}
+
 /** Height of the native caption strip drawn over the page, or 0 when the window has none. */
 export function windowControlsOverlayHeight(): number {
-  const overlay = getWindowControlsOverlay();
-  return overlay?.visible ? overlay.getTitlebarAreaRect().height : 0;
+  return visibleTitlebarAreaRect()?.height ?? 0;
 }
 
 export function onWindowControlsOverlayGeometryChange(listener: () => void): () => void {
