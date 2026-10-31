@@ -23,6 +23,7 @@ import {
   CalendarClockIcon,
   ChevronDownIcon,
   Clock3Icon,
+  MergeIcon,
   MessagesSquareIcon,
   PencilIcon,
   XIcon,
@@ -62,6 +63,7 @@ const QUEUE_VISIBLE_ROWS = 3;
 export interface QueuedRunsControlHandle {
   steerNext: (repeat: boolean) => boolean;
   editLatest: (repeat: boolean) => boolean;
+  mergeQueue: (repeat: boolean) => boolean;
 }
 
 type ThreadQueueProjection = Parameters<typeof deriveThreadQueueWorkflowState>[0];
@@ -84,6 +86,7 @@ export function QueuedRunsControl({
   readonly ref?: Ref<QueuedRunsControlHandle>;
   readonly steerShortcutLabel?: string | null;
   readonly editShortcutLabel?: string | null;
+  readonly mergeShortcutLabel?: string | null;
   readonly environmentId: EnvironmentId;
   readonly threadId: ThreadId;
   readonly optimisticMessages: ReadonlyArray<
@@ -106,6 +109,7 @@ export function QueuedRunsControl({
   const promote = useAtomCommand(threadEnvironment.promoteQueuedRun);
   const resume = useAtomCommand(threadEnvironment.resumeThreadQueue);
   const cancel = useAtomCommand(threadEnvironment.cancelQueuedRun);
+  const merge = useAtomCommand(threadEnvironment.mergeQueuedRuns);
   const [showAll, setShowAll] = useState(false);
   const queueListId = useId();
   const [busyRunId, setBusyRunId] = useState<RunId | null>(null);
@@ -204,6 +208,21 @@ export function QueuedRunsControl({
     }
   };
 
+  // Wait for rows still saving, an open edit, and a send or removal already on its way.
+  const canMergeNow =
+    workflow?.canMergeQueuedRuns === true &&
+    optimisticQueued.length === 0 &&
+    props.editingRunId === null &&
+    busyRunId === null;
+
+  const mergeQueue = async () => {
+    const first = queued[0];
+    if (!canMergeNow || first === undefined) return;
+    setBusyRunId(first.run.id);
+    await merge({ environmentId: props.environmentId, input: { threadId: props.threadId } });
+    setBusyRunId(null);
+  };
+
   useImperativeHandle(ref, () => ({
     steerNext(repeat) {
       const next = queued[0];
@@ -234,6 +253,11 @@ export function QueuedRunsControl({
       }
       return true;
     },
+    mergeQueue(repeat) {
+      if (!canMergeNow) return false;
+      if (!repeat) void mergeQueue();
+      return true;
+    },
   }));
 
   if (items.length === 0) return null;
@@ -249,6 +273,7 @@ export function QueuedRunsControl({
 
   const collapsible = items.length > QUEUE_VISIBLE_ROWS;
   const visibleItems = collapsible && !showAll ? items.slice(0, QUEUE_VISIBLE_ROWS - 1) : items;
+  const showMerge = items.length > 1;
 
   return (
     <section
@@ -420,30 +445,65 @@ export function QueuedRunsControl({
           );
         })}
       </ol>
-      {collapsible ? (
-        <div className="self-end pe-1 text-xs pointer-coarse:[&_[data-slot=inline-button]]:relative pointer-coarse:[&_[data-slot=inline-button]]:after:absolute pointer-coarse:[&_[data-slot=inline-button]]:after:-inset-x-1.5 pointer-coarse:[&_[data-slot=inline-button]]:after:-inset-y-3.5">
-          <InlineButton
-            tone="muted"
-            aria-expanded={showAll}
-            aria-controls={queueListId}
-            // Keep the composer focused; keyboard activation still works.
-            onPointerDown={(event) => event.preventDefault()}
-            onClick={() => setShowAll((value) => !value)}
-          >
-            {showAll
-              ? gt("Show fewer")
-              : gt(
-                  "{count, plural, one {Show all {count} queued} other {Show all {count} queued}}",
-                  { count: items.length },
+      {collapsible || showMerge ? (
+        <div className="flex items-center gap-3 self-end pe-1 text-xs pointer-coarse:[&_[data-slot=inline-button]]:relative pointer-coarse:[&_[data-slot=inline-button]]:after:absolute pointer-coarse:[&_[data-slot=inline-button]]:after:-inset-x-1.5 pointer-coarse:[&_[data-slot=inline-button]]:after:-inset-y-3.5">
+          {showMerge ? (
+            <Tooltip>
+              {/* The span keeps the tooltip, and its reason, on a disabled button. */}
+              <TooltipTrigger render={<span className="flex shrink-0" />}>
+                <InlineButton
+                  tone="muted"
+                  disabled={!canMergeNow}
+                  // Keep the composer focused; keyboard activation still works.
+                  onPointerDown={(event) => event.preventDefault()}
+                  onClick={() => void mergeQueue()}
+                >
+                  <MergeIcon aria-hidden className="me-0.5 size-3.5" />
+                  <T>Merge queued messages</T>
+                </InlineButton>
+              </TooltipTrigger>
+              <TooltipPopup>
+                {props.editingRunId !== null
+                  ? gt("Finish editing to merge queued messages")
+                  : workflow?.canMergeQueuedRuns !== true
+                    ? gt(
+                        "Nothing to merge. Commands, guest and automated messages, and messages using a different model stay separate.",
+                      )
+                    : props.mergeShortcutLabel
+                      ? gt(
+                          "Combine into one queued message without sending ({shortcut}). Commands, guest and automated messages, and messages using a different model stay separate.",
+                          { shortcut: props.mergeShortcutLabel },
+                        )
+                      : gt(
+                          "Combine into one queued message without sending. Commands, guest and automated messages, and messages using a different model stay separate.",
+                        )}
+              </TooltipPopup>
+            </Tooltip>
+          ) : null}
+          {collapsible ? (
+            <InlineButton
+              tone="muted"
+              aria-expanded={showAll}
+              aria-controls={queueListId}
+              // Keep the composer focused; keyboard activation still works.
+              onPointerDown={(event) => event.preventDefault()}
+              onClick={() => setShowAll((value) => !value)}
+            >
+              {showAll
+                ? gt("Show fewer")
+                : gt(
+                    "{count, plural, one {Show all {count} queued} other {Show all {count} queued}}",
+                    { count: items.length },
+                  )}
+              <ChevronDownIcon
+                aria-hidden
+                className={cn(
+                  "size-3.5 transition-transform duration-150 motion-reduce:transition-none",
+                  showAll && "rotate-180",
                 )}
-            <ChevronDownIcon
-              aria-hidden
-              className={cn(
-                "size-3.5 transition-transform duration-150 motion-reduce:transition-none",
-                showAll && "rotate-180",
-              )}
-            />
-          </InlineButton>
+              />
+            </InlineButton>
+          ) : null}
         </div>
       ) : null}
     </section>

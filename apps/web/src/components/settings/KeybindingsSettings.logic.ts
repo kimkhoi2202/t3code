@@ -413,6 +413,7 @@ const COMMAND_LABELS: Partial<Record<KeybindingCommand, string>> = {
   "composer.dictation": msg("Composer: Start or Finish Dictation"),
   "thread.steerQueuedMessage": msg("Queue: Send First Queued Message"),
   "thread.editQueuedMessage": msg("Queue: Edit Last Queued Message"),
+  "thread.mergeQueuedMessages": msg("Queue: Merge Queued Messages"),
   "thread.copyReference": msg("Pull Request: Copy Link or Thread"),
   "thread.switcher.next": msg("Thread Switcher: Next Recent Thread"),
   "thread.switcher.previous": msg("Thread Switcher: Previous Recent Thread"),

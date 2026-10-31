@@ -7,6 +7,7 @@ import {
 import { copySorted } from "@t3tools/shared/Array";
 import { mFallback, msg } from "gt-i18n";
 import type { MFunctionType } from "gt-i18n/types";
+import { planQueuedRunMerge } from "@t3tools/shared/queuedRunMerge";
 
 import type { ThreadStructure } from "./models.ts";
 
@@ -41,6 +42,8 @@ export interface ThreadQueueWorkflowState {
   /** The active run is a compaction, so promoting a queued message stops it instead of steering. */
   readonly promoteSkipsCompaction: boolean;
   readonly canSendNow: boolean;
+  /** At least two neighbouring queued messages can become one. */
+  readonly canMergeQueuedRuns: boolean;
 }
 
 export function resolveActiveThreadRun(projection: Pick<Projection, "runs">): Run | null {
@@ -194,6 +197,7 @@ export function deriveThreadQueueWorkflowState(
         (capabilities?.supportsActiveSteering === true ||
           capabilities?.supportsSteeringByInterruptRestart === true)),
     promoteSkipsCompaction,
+    canMergeQueuedRuns: planQueuedRunMerge(queuedRuns).length > 0,
   };
 }
 

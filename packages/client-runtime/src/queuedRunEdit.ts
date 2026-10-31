@@ -6,7 +6,8 @@ import type { MFunctionType } from "gt-i18n/types";
  * once, when the projection reports it, wherever the user is in the app. It also
  * owns the edit's save, because a save outlives the view that started it.
  */
-import type { RunId } from "@t3tools/contracts";
+import type { MessageId, RunId } from "@t3tools/contracts";
+import * as DateTime from "effect/DateTime";
 import { Atom, type AtomRegistry } from "effect/reactivity";
 
 export interface QueuedRunStatus {
@@ -42,6 +43,28 @@ export function makeQueuedRunsAtom(input: {
     if (get(input.detailStatus) === "deleted") return [];
     return get(input.runs);
   });
+}
+
+/**
+ * The runs an open edit watches. A message changed since the edit began reads as out of the queue:
+ * saving would overwrite that change, such as messages another client merged into it.
+ */
+export function queuedRunsForEdit(
+  projection: {
+    readonly runs: ReadonlyArray<QueuedRunStatus>;
+    readonly messages: ReadonlyArray<{
+      readonly id: MessageId;
+      readonly updatedAt: DateTime.DateTime;
+    }>;
+  },
+  edited: { readonly messageId: MessageId; readonly updatedAt?: DateTime.DateTime | undefined },
+): ReadonlyArray<QueuedRunStatus> {
+  const message = projection.messages.find((candidate) => candidate.id === edited.messageId);
+  return message !== undefined &&
+    edited.updatedAt !== undefined &&
+    DateTime.toEpochMillis(message.updatedAt) !== DateTime.toEpochMillis(edited.updatedAt)
+    ? []
+    : projection.runs;
 }
 
 function runLeftQueue(runs: ReadonlyArray<QueuedRunStatus> | null, runId: RunId): boolean {

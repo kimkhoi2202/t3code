@@ -44,7 +44,10 @@ export function resolveThreadQueueRowControls(input: {
       ? ""
       : assistantCitationsToPlainText(
           replaceComposerContextReferences(input.text, (reference) => reference.label),
-        ).trim(),
+        )
+          // A merged message's later prompts must show in this short preview, not sit below its cut.
+          .replace(/\s+/g, " ")
+          .trim(),
     isEditing,
   };
 }

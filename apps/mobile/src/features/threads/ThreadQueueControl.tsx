@@ -4,6 +4,7 @@ import { useAtomValue } from "@effect/atom-react";
 import {
   makeQueuedRunsAtom,
   queuedRunEditBlockedReason,
+  queuedRunsForEdit,
 } from "@t3tools/client-runtime/queued-run-edit";
 import { scopeThreadRef } from "@t3tools/client-runtime/environment";
 import {
@@ -50,6 +51,7 @@ import {
 
 const REMOVE_ACTION_WIDTH = 76;
 const THUMBNAIL_LIMIT = 3;
+const ROW_PREVIEW_LINES = 3;
 const EMPTY_QUEUED_COUNT_ATOM = Atom.make(0).pipe(
   Atom.withLabel("mobile-thread-queue-count:empty"),
 );
@@ -151,6 +153,7 @@ export function ThreadQueueSheet({ route }: StaticScreenProps<QueueTarget>) {
     label: "resume queue",
     reportFailure: false,
   });
+  const merge = useAtomCommand(threadEnvironment.mergeQueuedRuns, "merge queued messages");
   const [resuming, setResuming] = useState(false);
   const [busyRunId, setBusyRunId] = useState<RunId | null>(null);
   const [previewFile, setPreviewFile] = useState<FilePreviewSource | null>(null);
@@ -188,9 +191,15 @@ export function ThreadQueueSheet({ route }: StaticScreenProps<QueueTarget>) {
           threadId: target.threadId,
           snapshot: threadEnvironment.snapshotAtom(target.environmentId),
           detailStatus: environmentThreadDetails.statusAtom(target),
-          runs: Atom.make(
-            (get) => get(environmentThreadDetails.quietThreadAtom(target))?.projection.runs ?? null,
-          ),
+          runs: Atom.make((get) => {
+            const projection = get(environmentThreadDetails.quietThreadAtom(target))?.projection;
+            return projection === undefined
+              ? null
+              : queuedRunsForEdit(projection, {
+                  messageId: entry.messageId,
+                  updatedAt: entry.message?.updatedAt,
+                });
+          }),
         }),
       );
       navigation.goBack();
@@ -224,6 +233,17 @@ export function ThreadQueueSheet({ route }: StaticScreenProps<QueueTarget>) {
         errorDisplayMessage(error, m) ?? m(msg("Try again.")),
       );
     }
+  };
+
+  const mergeQueue = async () => {
+    const first = queuedRuns[0];
+    if (busyRef.current || first === undefined) return;
+    busyRef.current = true;
+    setBusyRunId(first.run.id);
+    void Haptics.selectionAsync();
+    await merge({ ...target, input: { threadId: target.threadId } });
+    busyRef.current = false;
+    setBusyRunId(null);
   };
 
   const content = (
@@ -267,6 +287,15 @@ export function ThreadQueueSheet({ route }: StaticScreenProps<QueueTarget>) {
       ) : null}
       {editBlockedReason !== null && queuedRuns.length > 0 ? (
         <Text className="py-3 text-sm text-foreground-muted">{editBlockedReason}</Text>
+      ) : null}
+      {workflow?.canMergeQueuedRuns ? (
+        <View className="py-3">
+          <Button
+            label={gt("Merge queued messages")}
+            disabled={resuming || busyRunId !== null || editing !== null}
+            onPress={() => void mergeQueue()}
+          />
+        </View>
       ) : null}
       {queuedRuns.length === 0 ? (
         <Text className="pt-6 text-center text-sm text-foreground-muted">
@@ -357,7 +386,7 @@ export function ThreadQueueSheet({ route }: StaticScreenProps<QueueTarget>) {
                             ? "text-sm text-foreground-muted"
                             : "text-sm text-foreground"
                         }
-                        numberOfLines={1}
+                        numberOfLines={ROW_PREVIEW_LINES}
                       >
                         {context?.guest === undefined ? null : (
                           <Text className="font-t3-medium text-adaptive-fuchsia-600-300">

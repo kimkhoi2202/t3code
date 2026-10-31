@@ -5,6 +5,7 @@ import { useAtomValue } from "@effect/atom-react";
 import {
   makeQueuedRunEditStore,
   makeQueuedRunsAtom,
+  queuedRunsForEdit,
 } from "@t3tools/client-runtime/queued-run-edit";
 import type { ComposerDispatchMode } from "@t3tools/client-runtime/state/composer-dispatch";
 import type { ThreadStructure } from "@t3tools/client-runtime/state/shell";
@@ -261,9 +262,10 @@ export function useQueuedRunEdit(input: {
     if (editing !== null && editing.runId !== request.runId) clearEditDraft(editing.runId);
     const target = queuedRunEditDraftId(routeThreadRef, request.runId);
     const sentText = stripAttachmentOnlyBootstrapPrompt(request.text);
-    const context = serverProjection?.messages.find(
-      (message) => message.id === request.messageId,
-    )?.context;
+    const message = serverProjection?.messages.find(
+      (candidate) => candidate.id === request.messageId,
+    );
+    const context = message?.context;
     const referenced = new Set(collectInlineContextIds(sentText));
     const records = (context?.records ?? []).filter((record) => referenced.has(record.contextId));
     // A reply shows above the composer while its message is edited, not as a chip in the text.
@@ -298,12 +300,17 @@ export function useQueuedRunEdit(input: {
           threadId: activeThreadId,
           snapshot: threadEnvironment.snapshotAtom(environmentId),
           detailStatus: environmentThreadDetails.statusAtom(threadRef),
-          runs: Atom.make(
-            (get) =>
-              get(environmentThreadDetails.quietThreadAtom(threadRef))?.projection.runs ?? null,
-          ),
+          runs: Atom.make((get) => {
+            const projection = get(environmentThreadDetails.quietThreadAtom(threadRef))?.projection;
+            return projection === undefined
+              ? null
+              : queuedRunsForEdit(projection, {
+                  messageId: request.messageId,
+                  updatedAt: message?.updatedAt,
+                });
+          }),
         }),
-        // The run started or was cancelled from another client. A changed
+        // The run started, was cancelled, or changed from another client. A changed
         // edit moves into the thread's own draft when that draft is empty;
         // otherwise it is dropped. Edits outlive navigation, so the toast is
         // unscoped and names the thread: the user may be anywhere by now.
@@ -321,7 +328,7 @@ export function useQueuedRunEdit(input: {
           toastManager.add(
             stackedThreadToast({
               type: recovery === "kept" ? "info" : "warning",
-              title: m(msg("Queued message is no longer queued")),
+              title: m(msg("Queued message changed")),
               description:
                 title === undefined
                   ? recovery === "kept"

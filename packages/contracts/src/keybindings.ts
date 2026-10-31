@@ -38,6 +38,7 @@ const THREAD_KEYBINDING_COMMANDS = [
   "thread.stop",
   "thread.steerQueuedMessage",
   "thread.editQueuedMessage",
+  "thread.mergeQueuedMessages",
   "thread.previous",
   "thread.next",
   "thread.switcher.next",

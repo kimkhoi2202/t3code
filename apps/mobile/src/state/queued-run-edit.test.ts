@@ -173,7 +173,7 @@ describe("beginQueuedRunEdit", () => {
     expect(getComposerDraftSnapshot(threadKey).text).toBe("original");
     expect(getComposerDraftSnapshot(queuedEditDraftKey(threadKey, runId)).text).toBe("");
     expect(appAtomRegistry.get(threadComposerErrorsAtom)[threadKey]?.message).toBe(
-      "That message already started. Your edit is back in the composer.",
+      "That message changed or already started. Your edit is back in the composer.",
     );
   });
 
@@ -194,7 +194,7 @@ describe("beginQueuedRunEdit", () => {
     expect(getComposerDraftSnapshot(threadKey).text).toBe("revised");
     expect(getComposerDraftSnapshot(queuedEditDraftKey(threadKey, runId)).text).toBe("");
     expect(appAtomRegistry.get(threadComposerErrorsAtom)[threadKey]?.message).toBe(
-      "That message already started. Your edit is back in the composer.",
+      "That message changed or already started. Your edit is back in the composer.",
     );
   });
 
@@ -213,7 +213,7 @@ describe("beginQueuedRunEdit", () => {
     expect(getQueuedRunEdit(threadKey)).toBeNull();
     expect(getComposerDraftSnapshot(threadKey).text).toBe("other work");
     expect(appAtomRegistry.get(threadComposerErrorsAtom)[threadKey]?.message).toBe(
-      "That message already started, so the edit was discarded.",
+      "That message changed or already started, so the edit was discarded.",
     );
   });
 
@@ -231,7 +231,7 @@ describe("beginQueuedRunEdit", () => {
     expect(getQueuedRunEdit(threadKey)).toBeNull();
     expect(getComposerDraftSnapshot(threadKey).text).toBe("");
     expect(appAtomRegistry.get(threadComposerErrorsAtom)[threadKey]?.message).toBe(
-      "That message already started, so the edit was discarded.",
+      "That message changed or already started, so the edit was discarded.",
     );
   });
 
@@ -249,7 +249,7 @@ describe("beginQueuedRunEdit", () => {
 
     expect(getQueuedRunEdit(threadKey)).toBeNull();
     expect(appAtomRegistry.get(threadComposerErrorsAtom)[threadKey]?.message).toBe(
-      "That message already started, so the edit was discarded.",
+      "That message changed or already started, so the edit was discarded.",
     );
   });
 });
