@@ -45,6 +45,7 @@ import {
   useRef,
   useState,
   type ReactNode,
+  type Ref,
   type SyntheticEvent,
 } from "react";
 import {
@@ -73,7 +74,10 @@ import {
   rememberTimelinePosition,
   resolveDisclosureRevealScrollDelta,
 } from "./timelineScrollAnchoring";
-import { AssistantSelectionToolbar } from "./AssistantSelectionToolbar";
+import {
+  AssistantSelectionToolbar,
+  type AssistantSelectionToolbarHandle,
+} from "./AssistantSelectionToolbar";
 import type { AssistantCitationSourceAnchor } from "~/lib/assistantTextSelection";
 import { type AssistantCitationRequest } from "./AssistantCitationSource";
 import { useAssistantCitationTarget } from "./useAssistantCitationTarget";
@@ -233,6 +237,7 @@ interface MessagesTimelineProps {
     sourceAnchor: AssistantCitationSourceAnchor,
   ) => boolean;
   onReplyToResponse?: TimelineRowSharedState["onReplyToResponse"];
+  selectionToolbarRef?: Ref<AssistantSelectionToolbarHandle>;
   isWorking: boolean;
   /** The thread is catching up from a cached copy, whose working state may be stale. */
   syncing?: boolean;
@@ -354,6 +359,7 @@ const ConversationTimeline = memo(function ConversationTimeline({
   citationHistory = CITED_HISTORY_LOADING,
   onCiteAssistantText,
   onReplyToResponse,
+  selectionToolbarRef,
   isWorking,
   syncing = false,
   runlessWorkActive = false,
@@ -1446,6 +1452,7 @@ const ConversationTimeline = memo(function ConversationTimeline({
           >
             {onCiteAssistantText && citationThreadRef ? (
               <AssistantSelectionToolbar
+                ref={selectionToolbarRef}
                 viewport={timelineViewportElement}
                 threadRef={citationThreadRef}
                 onCite={onCiteAssistantText}
