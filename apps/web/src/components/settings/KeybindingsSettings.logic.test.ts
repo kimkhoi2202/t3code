@@ -8,8 +8,11 @@ import {
 import { resolveShortcutCommand } from "../../keybindings";
 
 import {
+  buildKeybindingCommandOptions,
   buildKeybindingRows,
   buildWhenVariableOptions,
+  filterKeybindingRows,
+  filterUnassignedCommands,
   keybindingConflictLabels,
   keybindingFromKeyboardEvent,
   parseWhenExpressionDraft,
@@ -59,6 +62,23 @@ describe("KeybindingsSettings.logic", () => {
     expect(buildKeybindingRows(bindings.slice(1)).map((row) => row.id)).toEqual(
       rows.map((row) => row.id),
     );
+  });
+
+  it("searches every word, and lists commands with no shortcut only for a search", () => {
+    const bindings = compileResolvedKeybindingsConfig([
+      { command: "thread.settle", key: "mod+shift+s" },
+      { command: "terminal.toggle", key: "mod+j" },
+    ]);
+    const rows = buildKeybindingRows(bindings);
+    const commands = buildKeybindingCommandOptions(bindings);
+
+    expect(filterKeybindingRows(rows, "settle thread").map((row) => row.command)).toEqual([
+      "thread.settle",
+    ]);
+    expect(filterKeybindingRows(rows, "  ")).toEqual(rows);
+    expect(filterUnassignedCommands(commands, rows, "rename thread")).toEqual(["thread.rename"]);
+    expect(filterUnassignedCommands(commands, rows, "settle")).not.toContain("thread.settle");
+    expect(filterUnassignedCommands(commands, rows, "  ")).toEqual([]);
   });
 
   it("captures platform-specific mod shortcuts", () => {
