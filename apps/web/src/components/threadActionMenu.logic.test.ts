@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { buildThreadActionMenuItems, type ThreadActionMenuState } from "./threadActionMenu.logic";
+import {
+  buildThreadActionMenuItems,
+  findThreadMenuEntry,
+  type ThreadActionMenuState,
+} from "./threadActionMenu.logic";
 
 const baseState: ThreadActionMenuState = {
   canOperate: true,
@@ -73,5 +77,24 @@ describe("buildThreadActionMenuItems", () => {
     });
     expect(items.find((item) => item.id === "archive")?.disabled).toBe(true);
     expect(items.find((item) => item.id === "turn-into-project")?.disabled).toBe(true);
+  });
+});
+
+describe("findThreadMenuEntry", () => {
+  it.each([
+    ["thread.snooze", {}, "snooze"],
+    ["thread.snooze", { isSnoozed: true }, "unsnooze"],
+    ["thread.toggleAutoSettle", { autoSettleEnabled: true }, "auto-settle:disabled"],
+    ["thread.toggleAutoSettle", { autoSettleEnabled: false }, "auto-settle:enabled"],
+  ] as const)("%s in %j stands for %s", (command, state, id) => {
+    const items = buildThreadActionMenuItems({ ...baseState, ...state });
+    expect(findThreadMenuEntry(items, command)?.id).toBe(id);
+  });
+
+  it("finds nothing the menu is not offering", () => {
+    const items = buildThreadActionMenuItems(baseState);
+    expect(findThreadMenuEntry(items, "thread.copyBranch")).toBeUndefined();
+    expect(findThreadMenuEntry(items, "thread.newOnBranch")).toBeUndefined();
+    expect(findThreadMenuEntry(items, "thread.shareWithGuest")).toBeUndefined();
   });
 });

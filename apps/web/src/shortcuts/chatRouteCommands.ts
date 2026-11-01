@@ -139,6 +139,29 @@ export function installChatRouteCommands(router: AnyRouter): () => void {
         }
         startNewLocal(event);
       },
+      "thread.filterByProject": (event) => {
+        const threadRef = readRouteThreadRef();
+        const thread = threadRef ? readThreadShell(threadRef) : null;
+        // An archived project is not a filter choice, here or in the sidebar's menu.
+        const group = readProjectGroups().find(
+          (project) =>
+            !project.archived &&
+            project.memberProjectRefs.some(
+              (member) =>
+                member.environmentId === thread?.environmentId &&
+                member.projectId === thread.projectId,
+            ),
+        );
+        if (!group) return false;
+        claim(event);
+        if (event.repeat) return;
+        const { sidebarProjectScopeKeys, setSidebarProjectScopeKeys } = useUiStateStore.getState();
+        // A selection made under one scope can hold threads the next scope hides.
+        useThreadSelectionStore.getState().clearSelection();
+        setSidebarProjectScopeKeys(
+          sidebarProjectScopeKeys.includes(group.projectKey) ? [] : [group.projectKey],
+        );
+      },
       "preview.toggle": (event) => {
         claim(event);
         const threadRef = readRouteThreadRef();

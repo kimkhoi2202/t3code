@@ -73,8 +73,8 @@ vi.mock("../localApi", () => ({
   readLocalApi: () => ({
     contextMenu: { show: state.show, close: () => {} },
     dialogs: {
-      confirm: async () => {
-        recordEffect("confirm");
+      confirm: async (message: string) => {
+        recordEffect(`confirm: ${message.split(" ", 1)[0]}`);
         return false;
       },
     },
@@ -105,7 +105,9 @@ vi.mock("../components/Sidebar.snooze", () => ({
   snoozeWakeDescription: () => "later",
 }));
 vi.mock("./useCopyToClipboard", () => ({
-  useCopyToClipboard: () => ({ copyToClipboard: () => recordEffect("copy") }),
+  useCopyToClipboard: () => ({
+    copyToClipboard: (text: string) => recordEffect(`copy: ${text}`),
+  }),
 }));
 vi.mock("./useHandleNewThread", () => ({
   useNewThreadHandler: () => async () => recordEffect("draft"),
@@ -192,5 +194,51 @@ describe("thread menu permissions", () => {
     expect(items[0]?.disabled).not.toBe(true);
     expect(state.effects).toEqual(["find"]);
     expect(onFind).toHaveBeenCalledExactlyOnceWith(target);
+  });
+});
+
+describe("thread menu shortcuts", () => {
+  it.each([
+    ["thread.rename", "rename"],
+    ["thread.newOnBranch", "draft"],
+    ["thread.regenerateTitle", "metadata"],
+    ["thread.markUnread", "mark-unread"],
+    ["thread.copyPath", "copy: /project"],
+    ["thread.copyBranch", "copy: main"],
+    ["thread.copyId", "copy: thread"],
+    ["thread.projectSettings", "project-settings"],
+    ["thread.archive", "confirm: Archive"],
+    ["thread.delete", "confirm: Delete"],
+  ] as const)("%s runs its entry without opening the menu", async (command, effect) => {
+    state.granted.add("secondary");
+    expect(createMenu().runCommand(command, position)).toBe(true);
+    await state.completed.promise;
+    expect(state.effects).toEqual([effect]);
+    expect(state.show).not.toHaveBeenCalled();
+  });
+
+  it("opens an entry with choices at the given position", async () => {
+    state.granted.add("secondary");
+    createMenu().runCommand("thread.snooze", position);
+    const [entries, shownAt] = state.show.mock.calls[0]!;
+    expect(entries.map((entry) => entry.id)).toEqual(["snooze:hour", "snooze:custom"]);
+    expect(shownAt).toBe(position);
+  });
+
+  it("says so instead of running an entry the menu has disabled", async () => {
+    expect(createMenu().runCommand("thread.delete", position)).toBe(true);
+    await state.completed.promise;
+    expect(state.effects).toEqual([]);
+  });
+
+  it("leaves the key alone without a thread", () => {
+    const menu = useThreadActionMenu({
+      threadRef: null,
+      projectCwd: null,
+      onStartRename: () => recordEffect("rename"),
+      canShareWithGuest: false,
+    });
+    expect(menu.runCommand("thread.rename", position)).toBe(false);
+    expect(state.effects).toEqual([]);
   });
 });

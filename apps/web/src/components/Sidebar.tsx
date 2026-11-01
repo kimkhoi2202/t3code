@@ -2782,7 +2782,16 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
               threadRef,
               clicked.value === "auto-settle:enabled",
             );
-            if (result._tag === "Failure" && !isAtomCommandInterrupted(result)) {
+            if (result._tag === "Success") {
+              toastManager.add({
+                type: "success",
+                title:
+                  clicked.value === "auto-settle:enabled"
+                    ? "Auto-settle enabled"
+                    : "Auto-settle disabled",
+                description: thread.title,
+              });
+            } else if (!isAtomCommandInterrupted(result)) {
               const error = squashAtomCommandFailure(result);
               toastManager.add(
                 stackedThreadToast({

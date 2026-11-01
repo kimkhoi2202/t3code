@@ -1,4 +1,4 @@
-import type { ContextMenuItem } from "@t3tools/contracts";
+import type { ContextMenuItem, KeybindingCommand } from "@t3tools/contracts";
 import type { SnoozePreset } from "@t3tools/client-runtime/state/thread-settled";
 
 export type ThreadActionMenuId =
@@ -28,6 +28,44 @@ export type ThreadActionMenuId =
   | "copy-thread-id"
   | "archive"
   | "delete";
+
+/**
+ * The menu entries a shortcut can stand for; with two, it toggles to the one not checked.
+ * `thread.filterByProject` is a chat route command, since only the sidebar's menu offers it.
+ */
+const THREAD_MENU_COMMANDS = {
+  "thread.newOnBranch": ["new-thread-on-branch"],
+  "thread.snooze": ["snooze", "unsnooze"],
+  "thread.rename": ["rename"],
+  "thread.regenerateTitle": ["regenerate-title"],
+  "thread.markUnread": ["mark-unread"],
+  "thread.shareWithGuest": ["share-guest"],
+  "thread.turnIntoProject": ["turn-into-project"],
+  "thread.toggleAutoSettle": ["auto-settle:enabled", "auto-settle:disabled"],
+  "thread.copyPath": ["copy-path"],
+  "thread.copyBranch": ["copy-branch"],
+  "thread.copyThread": ["copy-thread"],
+  "thread.copyId": ["copy-thread-id"],
+  "thread.projectSettings": ["project-settings"],
+  "thread.archive": ["archive"],
+  "thread.delete": ["delete"],
+} as const satisfies Partial<Record<KeybindingCommand, ReadonlyArray<ThreadActionMenuId>>>;
+
+export type ThreadMenuCommand = keyof typeof THREAD_MENU_COMMANDS;
+
+export function isThreadMenuCommand(command: KeybindingCommand): command is ThreadMenuCommand {
+  return command in THREAD_MENU_COMMANDS;
+}
+
+export function findThreadMenuEntry(
+  items: ReadonlyArray<ContextMenuItem<ThreadActionMenuId>>,
+  command: ThreadMenuCommand,
+): ContextMenuItem<ThreadActionMenuId> | undefined {
+  const ids: ReadonlyArray<ThreadActionMenuId> = THREAD_MENU_COMMANDS[command];
+  return items
+    .flatMap((item) => [item, ...(item.children ?? [])])
+    .find((entry) => ids.includes(entry.id) && !entry.checked);
+}
 
 export type DraftActionMenuId =
   | "copy"

@@ -380,6 +380,8 @@ export function commandLabel(command: KeybindingCommand): string {
   if (command === "thread.copyReference") return "Pull Request: Copy Link or Thread";
   if (command === "thread.switcher.next") return "Thread Switcher: Next Recent Thread";
   if (command === "thread.switcher.previous") return "Thread Switcher: Previous Recent Thread";
+  if (command === "thread.newOnBranch") return "Thread: New Thread on Branch";
+  if (command === "thread.copyId") return "Thread: Copy Thread ID";
   const usageMetric = METRIC_OPTIONS.find((option) => option.command === command);
   if (usageMetric) return `Usage: ${usageMetric.label}`;
   const usagePeriod = WINDOW_OPTIONS.find((option) => option.command === command);

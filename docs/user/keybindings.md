@@ -159,6 +159,16 @@ Windows, and Linux. Browsers keep `Ctrl+Tab` for their own tabs, so on the web b
 **Thread Switcher: Next Recent Thread** and **Thread Switcher: Previous Recent Thread** to other
 keys in Settings → Keybindings.
 
+## Thread menu actions
+
+Every action in a thread's menu can have a shortcut, such as renaming, marking unread, copying its
+path or branch, archiving, and deleting. Pin, settle, and find have default keys. Bind the others
+with **Add keybinding** in Settings → Keybindings. A shortcut acts on the open thread and asks for
+the same confirmation as the menu. If the action isn't available right now, such as archiving a
+running thread, the shortcut tells you instead of running it. **Thread: Snooze** opens the snooze
+times, or wakes a snoozed thread. **Thread: Toggle Auto Settle** switches auto-settle on or off.
+Set **When** to `!terminalFocus` to keep a shortcut out of the terminal.
+
 ## Precedence
 
 The last rule whose key and condition both match wins, even if it belongs to a
