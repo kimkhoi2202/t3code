@@ -1,6 +1,6 @@
 import { EnvironmentId, ProjectId, ThreadId } from "@t3tools/contracts";
 import { describe, expect, it, vi } from "vite-plus/test";
-import { page } from "vite-plus/test/browser";
+import { page, userEvent } from "vite-plus/test/browser";
 
 import { render } from "../../test/render";
 import { openCommandPalette } from "../commandPaletteBus";
@@ -90,5 +90,24 @@ describe("CommandPalette open intents", () => {
     await page.getByRole("option", { name: /Acme/ }).first().click();
 
     await vi.waitFor(() => expect(screen.router?.state.location.pathname).toBe("/local/parent"));
+  });
+
+  it("marks a lone result as the one Enter runs, but no row among several", async () => {
+    setup();
+    await using _screen = await render(<CommandPalette>{null}</CommandPalette>);
+    const rows = page.getByRole("option");
+    const input = page.getByPlaceholder("Search commands, projects, and threads...");
+
+    openCommandPalette();
+    await input.fill("appearance");
+    await expect.poll(() => rows.elements().length).toBeGreaterThan(1);
+    expect(rows.elements().some((row) => row.hasAttribute("data-active"))).toBe(false);
+
+    await input.fill("open settings");
+    await expect.poll(() => rows.elements().length).toBe(1);
+    await expect.element(rows).toHaveAttribute("data-active");
+
+    await userEvent.keyboard("{Enter}");
+    await expect.element(input).not.toBeInTheDocument();
   });
 });

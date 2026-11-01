@@ -2360,6 +2360,11 @@ function OpenCommandPaletteDialog(props: {
   const resultRows = buildCommandPaletteRows(displayedGroups);
   const autoHighlightsFirstRow =
     !isBrowsing && !isRemoteProjectCloneFlow && newProjectFlow === null;
+  const firstItemValue = autoHighlightsFirstRow ? resultRows.itemValues[0] : undefined;
+  // Enter runs the first row even unhighlighted, and typing clears the highlight. A lone result
+  // shows that Enter will run it.
+  const activeItemValue =
+    highlightedItemValue ?? (resultRows.itemValues.length === 1 ? (firstItemValue ?? null) : null);
 
   const inputPlaceholder =
     newProjectFlow !== null
@@ -2583,7 +2588,6 @@ function OpenCommandPaletteDialog(props: {
       return;
     }
 
-    const firstItemValue = autoHighlightsFirstRow ? resultRows.itemValues[0] : undefined;
     if (
       event.key === "ArrowDown" &&
       highlightClearedRef.current &&
@@ -2900,7 +2904,7 @@ function OpenCommandPaletteDialog(props: {
       <CommandPaletteVirtualizedResults
         rows={resultRows.rows}
         listRef={resultListRef}
-        highlightedItemValue={highlightedItemValue}
+        highlightedItemValue={activeItemValue}
         isActionsOnly={isActionsOnly}
         keybindings={keybindings}
         onExecuteItem={executeItem}
