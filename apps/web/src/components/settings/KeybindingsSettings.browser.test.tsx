@@ -5,6 +5,7 @@ import { page, userEvent, type Locator } from "vite-plus/test/browser";
 import { render } from "../../../test/render";
 import { compileResolvedKeybindingsConfig } from "@t3tools/shared/keybindings";
 import * as atomCommands from "../../state/use-atom-command";
+import { SidebarProvider } from "../ui/sidebar";
 
 vi.mock(import("../../state/session"), async (original) => ({
   ...(await original()),
@@ -16,6 +17,9 @@ vi.mock(import("../../state/session"), async (original) => ({
 vi.mock(import("../../state/use-atom-command"), async (original) => ({
   ...(await original()),
   useAtomCommand: vi.fn(() => vi.fn()) as never,
+}));
+vi.mock("./useAvailableSettingsSearchItems", () => ({
+  useAvailableSettingsSearchItems: () => [],
 }));
 vi.mock(import("./SettingsScopeContext"), async (original) => ({
   ...(await original()),
@@ -44,6 +48,7 @@ vi.mock(import("./SettingsScopeContext"), async (original) => ({
 
 import { Dialog, DialogPopup, DialogTitle } from "../ui/dialog";
 import { KeybindingsSettingsPanel } from "./KeybindingsSettings";
+import { SettingsSidebarNav } from "./SettingsSidebarNav";
 
 // The modal dialog's inert layer swallows pointer events in this harness, so drive the DOM.
 async function activate(locator: Locator, action: "click" | "focus") {
@@ -213,4 +218,27 @@ it("finds a command with no shortcut, and lets Tab leave its recorder", async ()
   await expect.element(recorder).not.toHaveFocus();
   await expect.element(recorder).toHaveValue("");
   await expect.element(screen.getByRole("button", { name: "Save" })).not.toBeInTheDocument();
+});
+
+it("mod+F goes to this page's search and selects it, and / stays with the settings search", async () => {
+  await using screen = await render(
+    <RegistryProvider>
+      <SidebarProvider>
+        <SettingsSidebarNav pathname="/settings/keybindings" />
+        <KeybindingsSettingsPanel />
+      </SidebarProvider>
+    </RegistryProvider>,
+  );
+  const search = screen.getByRole("searchbox", { name: "Search keybindings" });
+  await search.fill("terminal");
+  (search.element() as HTMLInputElement).blur();
+
+  await userEvent.keyboard("{Control>}f{/Control}");
+  await expect.element(search).toHaveFocus();
+  expect(search.element()).toHaveProperty("selectionStart", 0);
+  expect(search.element()).toHaveProperty("selectionEnd", "terminal".length);
+
+  (search.element() as HTMLInputElement).blur();
+  await userEvent.keyboard("/");
+  await expect.element(screen.getByRole("combobox", { name: "Search settings" })).toHaveFocus();
 });

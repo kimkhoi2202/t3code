@@ -184,6 +184,15 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
       }
 
       event.preventDefault();
+      // A page's own search takes find. "/" stays with this search, which shows its hint.
+      const pageSearch = isFindShortcut
+        ? document.querySelector<HTMLInputElement>("[data-settings-page-search]")
+        : null;
+      if (pageSearch) {
+        pageSearch.focus();
+        pageSearch.select();
+        return;
+      }
       setCompactSearchOpen(true);
       searchInputRef.current?.focus();
       searchInputRef.current?.select();
