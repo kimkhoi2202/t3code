@@ -141,10 +141,10 @@ function KeybindingsSearchInput({
         onKeyDown={(event) => {
           if (event.key !== "Escape") return;
           event.preventDefault();
-          if (query.length > 0) {
-            event.stopPropagation();
-            onChange("");
-          } else event.currentTarget.blur();
+          // An unhandled Escape closes the settings page.
+          event.stopPropagation();
+          if (query.length > 0) onChange("");
+          else event.currentTarget.blur();
         }}
         placeholder={gt("Search keybindings")}
         aria-label={gt("Search keybindings")}
