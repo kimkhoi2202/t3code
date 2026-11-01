@@ -15,12 +15,15 @@ import { ChevronDownIcon } from "lucide-react";
 import {
   memo,
   useEffect,
+  useImperativeHandle,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
+  type Ref,
 } from "react";
 import { isTrailingDoubleClick } from "../Sidebar.logic";
+import type { ThreadMenuCommand } from "../threadActionMenu.logic";
 import { Badge } from "../ui/badge";
 import { MiddleTruncate } from "../ui/middle-truncate";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
@@ -45,7 +48,13 @@ import { textDirection } from "~/textDirection";
 import { useClientSettings } from "../../hooks/useSettings";
 import { GuestShareIndicator } from "./GuestShareControls";
 
+export interface ChatHeaderHandle {
+  /** Returns false with no thread to act on, leaving the key alone. */
+  runThreadCommand(command: ThreadMenuCommand): boolean;
+}
+
 interface ChatHeaderProps {
+  ref?: Ref<ChatHeaderHandle>;
   activeThreadEnvironmentId: EnvironmentId;
   activeThreadId: ThreadId;
   activeThreadTitle: string;
@@ -71,6 +80,7 @@ function resolveRenameCommit(input: {
 }
 
 export const ChatHeader = memo(function ChatHeader({
+  ref,
   activeThreadEnvironmentId,
   activeThreadId,
   activeThreadTitle,
@@ -199,18 +209,29 @@ export const ChatHeader = memo(function ChatHeader({
       }
     });
   };
-  const { openMenu, closeMenu } = useThreadActionMenu({
+  const { openMenu, closeMenu, runCommand } = useThreadActionMenu({
     threadRef: isServerThread ? activeThreadRef : null,
     projectCwd: activeProjectCwd,
     onStartRename: startRename,
     onFind: onFindInThread,
     canShareWithGuest,
   });
+  const titleButtonRef = useRef<HTMLButtonElement | null>(null);
+  const titleMenuPosition = () => {
+    // Renaming swaps the title button for an input.
+    const rect = (
+      titleButtonRef.current ?? breadcrumbContainerRef.current
+    )?.getBoundingClientRect();
+    return rect ? { x: rect.left, y: rect.bottom + 4 } : undefined;
+  };
   const openMenuFromTitle = (event: ReactMouseEvent<HTMLButtonElement>) => {
     if (isTrailingDoubleClick(event.detail)) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    openMenu({ x: rect.left, y: rect.bottom + 4 });
+    const position = titleMenuPosition();
+    if (position) openMenu(position);
   };
+  useImperativeHandle(ref, () => ({
+    runThreadCommand: (command) => runCommand(command, titleMenuPosition()),
+  }));
   const handleTitleDoubleClick = (event: ReactMouseEvent) => {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     if ((event.target as HTMLElement).closest("[data-thread-title-chevron]") !== null) return;
@@ -357,6 +378,7 @@ export const ChatHeader = memo(function ChatHeader({
               <TooltipTrigger
                 render={
                   <button
+                    ref={titleButtonRef}
                     type="button"
                     aria-label={gt("Thread actions for {title}", { title: activeThreadTitle })}
                     aria-haspopup="menu"

@@ -308,7 +308,9 @@ import { NativeChildWorkDialog } from "./chat/NativeChildWorkDialog";
 import { ProviderSubagentBar } from "./chat/ProviderSubagentBar";
 import { getTriggerDisplayModelName } from "./chat/providerIconUtils";
 import { resolveScrollToEndClearance } from "./composerFooterLayout";
-import { ChatHeader } from "./chat/ChatHeader";
+import { ChatHeader, type ChatHeaderHandle } from "./chat/ChatHeader";
+import { isInsideConfirmation } from "../shortcuts/dispatcher";
+import { isThreadMenuCommand } from "./threadActionMenu.logic";
 import { useSideChat } from "./chat/useSideChat";
 import { useRemoteOpenState } from "~/remoteOpen";
 import { shouldShowOpenInPicker } from "./chat/OpenInPicker.logic";
@@ -658,6 +660,7 @@ export default function ChatView(props: ChatViewProps) {
   const composerTerminalContextsRef = useRef<TerminalContextDraft[]>([]);
   const branchToolbarRef = useRef<BranchToolbarHandle>(null);
   const selectionToolbarRef = useRef<AssistantSelectionToolbarHandle>(null);
+  const chatHeaderRef = useRef<ChatHeaderHandle>(null);
   const citeAssistantText = (
     citation: AssistantCitation,
     sourceAnchor: AssistantCitationSourceAnchor,
@@ -2844,6 +2847,16 @@ export default function ChatView(props: ChatViewProps) {
       },
     },
     fallback: (command) => {
+      if (isThreadMenuCommand(command)) {
+        return ({ event }) => {
+          if (event.repeat || isInsideConfirmation(event.target)) return;
+          // A maximized panel hides the title that renaming edits.
+          if (command === "thread.rename" && rightPanelMaximized && activeThreadRef) {
+            useRightPanelStore.getState().setMaximized(activeThreadRef, false);
+          }
+          return chatHeaderRef.current?.runThreadCommand(command) ?? false;
+        };
+      }
       const scriptId = projectScriptIdFromCommand(command);
       if (!scriptId || !activeProject || !canOperateTerminal) return undefined;
       const script = activeProjectScripts.find((entry) => entry.id === scriptId);
@@ -3447,6 +3460,7 @@ export default function ChatView(props: ChatViewProps) {
             {!rightPanelControlsAtRoot && !rightPanelControlsInPanel ? panelLayoutControls : null}
             {inlineRightPanelOwnsTitleBar ? threadPanelHeaderControl : null}
             <ChatHeader
+              ref={chatHeaderRef}
               activeThreadEnvironmentId={activeThread.environmentId}
               activeThreadId={activeThread.id}
               isServerThread={isServerThread}

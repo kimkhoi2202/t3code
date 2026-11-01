@@ -405,6 +405,8 @@ export function buildKeybindingCommandOptions(
 }
 
 const COMMAND_LABELS: Partial<Record<KeybindingCommand, string>> = {
+  "thread.copyId": msg("Thread: Copy Thread ID"),
+  "thread.newOnBranch": msg("Thread: New Thread on Branch"),
   "workspace.focusNext": msg("Focus Next Workspace Area"),
   "workspace.focusPrevious": msg("Focus Previous Workspace Area"),
   "composer.sendAlternate": msg("Composer: Opposite Queue or Steer Action"),

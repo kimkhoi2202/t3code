@@ -53,7 +53,7 @@ function readFocusContext(event: KeyboardEvent): Partial<ShortcutMatchContext> {
   };
 }
 
-function isInsideConfirmation(target: EventTarget | null): boolean {
+export function isInsideConfirmation(target: EventTarget | null): boolean {
   return target instanceof Element && target.closest('[role="alertdialog"]') !== null;
 }
 

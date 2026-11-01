@@ -19,6 +19,8 @@ function deferred<T>() {
 
 const state = vi.hoisted(() => ({
   granted: new Set<string>(),
+  loaded: true,
+  toasts: [] as string[],
   effects: [] as string[],
   completed: deferred<void>(),
   show: vi.fn<
@@ -49,16 +51,19 @@ vi.mock("../state/session", () => ({
 vi.mock("../state/entities", () => ({
   readEnvironmentServerConfigLoaded: () => true,
   readEnvironmentSupportsAutoSettleOptOut: () => true,
-  readThreadShell: () => ({
-    id: "thread",
-    environmentId: "secondary",
-    projectId: "project",
-    title: "Thread",
-    branch: "main",
-    worktreePath: null,
-    runtime: null,
-    latestRun: null,
-  }),
+  readThreadShell: () =>
+    state.loaded
+      ? {
+          id: "thread",
+          environmentId: "secondary",
+          projectId: "project",
+          title: "Thread",
+          branch: "main",
+          worktreePath: null,
+          runtime: null,
+          latestRun: null,
+        }
+      : null,
   useProjects: () => [{ id: "project", environmentId: "secondary" }],
 }));
 vi.mock("../state/environments", () => ({ usePrimaryEnvironmentId: () => "primary" }));
@@ -73,8 +78,8 @@ vi.mock("../localApi", () => ({
   readLocalApi: () => ({
     contextMenu: { show: state.show, close: () => {} },
     dialogs: {
-      confirm: async () => {
-        recordEffect("confirm");
+      confirm: async (message: string) => {
+        recordEffect(`confirm: ${message.split(" ", 1)[0]}`);
         return false;
       },
     },
@@ -96,7 +101,12 @@ vi.mock("../uiStateStore", () => ({
 }));
 vi.mock("../components/ui/toast", () => ({
   stackedThreadToast: (toast: unknown) => toast,
-  toastManager: { add: () => state.completed.resolve() },
+  toastManager: {
+    add: (toast: { title: string }) => {
+      state.toasts.push(toast.title);
+      state.completed.resolve();
+    },
+  },
 }));
 vi.mock("../components/Sidebar.snooze", () => ({
   resolveSnoozePresets: () => [
@@ -105,7 +115,9 @@ vi.mock("../components/Sidebar.snooze", () => ({
   snoozeWakeDescription: () => "later",
 }));
 vi.mock("./useCopyToClipboard", () => ({
-  useCopyToClipboard: () => ({ copyToClipboard: () => recordEffect("copy") }),
+  useCopyToClipboard: () => ({
+    copyToClipboard: (text: string) => recordEffect(`copy: ${text}`),
+  }),
 }));
 vi.mock("./useHandleNewThread", () => ({
   useNewThreadHandler: () => async () => recordEffect("draft"),
@@ -160,6 +172,8 @@ const createMenu = (options: { readonly onFind?: (threadRef: typeof target) => v
 
 beforeEach(() => {
   state.granted = new Set(["primary"]);
+  state.loaded = true;
+  state.toasts = [];
   state.effects = [];
   state.completed = deferred<void>();
   state.show.mockReset().mockResolvedValue(null);
@@ -192,5 +206,58 @@ describe("thread menu permissions", () => {
     expect(items[0]?.disabled).not.toBe(true);
     expect(state.effects).toEqual(["find"]);
     expect(onFind).toHaveBeenCalledExactlyOnceWith(target);
+  });
+});
+
+describe("thread menu shortcuts", () => {
+  it.each([
+    ["thread.rename", "rename"],
+    ["thread.newOnBranch", "draft"],
+    ["thread.markUnread", "mark-unread"],
+    ["thread.copyPath", "copy: /project"],
+    ["thread.copyBranch", "copy: main"],
+    ["thread.copyId", "copy: thread"],
+    ["thread.projectSettings", "project-settings"],
+    ["thread.archive", "confirm: Archive"],
+    ["thread.delete", "confirm: Delete"],
+  ] as const)("%s runs its entry without opening the menu", async (command, effect) => {
+    state.granted.add("secondary");
+    expect(createMenu().runCommand(command, position)).toBe(true);
+    await state.completed.promise;
+    expect(state.effects).toEqual([effect]);
+    expect(state.show).not.toHaveBeenCalled();
+  });
+
+  it("opens an entry with choices at the given position", async () => {
+    state.granted.add("secondary");
+    createMenu().runCommand("thread.snooze", position);
+    const [entries, shownAt] = state.show.mock.calls[0]!;
+    expect(entries.map((entry) => entry.id)).toEqual(["snooze:hour", "snooze:custom"]);
+    expect(shownAt).toBe(position);
+  });
+
+  it("says so instead of running an entry the menu has disabled", async () => {
+    expect(createMenu().runCommand("thread.delete", position)).toBe(true);
+    await state.completed.promise;
+    expect(state.effects).toEqual([]);
+  });
+
+  it("leaves the key alone without a thread", () => {
+    const menu = useThreadActionMenu({
+      threadRef: null,
+      projectCwd: null,
+      onStartRename: () => recordEffect("rename"),
+      canShareWithGuest: false,
+    });
+    expect(menu.runCommand("thread.rename", position)).toBe(false);
+    expect(state.effects).toEqual([]);
+  });
+
+  it("leaves the key alone for a thread that has not loaded, which only its menu reports", () => {
+    state.loaded = false;
+    expect(createMenu().runCommand("thread.rename", position)).toBe(false);
+    expect(state.toasts).toEqual([]);
+    createMenu().openMenu(position);
+    expect(state.toasts).toEqual(["Thread actions unavailable"]);
   });
 });
