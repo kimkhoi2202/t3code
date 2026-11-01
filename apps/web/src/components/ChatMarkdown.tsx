@@ -636,7 +636,7 @@ function useChatMarkdownState({
   const openInEditor = useAtomCommand(shellEnvironment.openInEditor, {
     reportFailure: false,
   });
-  const revealFileInFileManager = (filePath: string) => {
+  const launchFileManager = (filePath: string, options?: { reveal: true }) => {
     if (environmentId === null) {
       return Promise.resolve(
         AsyncResult.failure<void, PreferredEditorEnvironmentRequiredError>(
@@ -647,13 +647,13 @@ function useChatMarkdownState({
     if (!readEnvironmentScope(environmentId, AuthOrchestrationOperateScope)) {
       return Promise.resolve(
         AsyncResult.failure<void, Error>(
-          Cause.fail(new Error("This connection cannot reveal files on this environment.")),
+          Cause.fail(new Error("This connection cannot open files on this environment.")),
         ),
       );
     }
     return openInEditor({
       environmentId,
-      input: { cwd: filePath, editor: "file-manager", reveal: true },
+      input: { cwd: filePath, editor: "file-manager", ...options },
     });
   };
   const diffThemeName = resolveDiffThemeName(resolvedTheme);
@@ -864,6 +864,13 @@ function useChatMarkdownState({
                 )
             : undefined
         }
+        onOpenInDefaultApp={
+          canUseShellActions &&
+          availableEditors.includes("file-manager") &&
+          preferredEditor !== "file-manager"
+            ? async () => launchFileManager((await resolveHostPath()).absolutePath)
+            : undefined
+        }
         resolveCopyPaths={async () =>
           markdownFileCopyPaths(fileLinkMeta, await resolveHostPath(), cwd)
         }
@@ -876,7 +883,8 @@ function useChatMarkdownState({
         openInEditorMenuLabel={preferredEditorMenuLabel}
         onReveal={
           canUseShellActions && revealInFileManagerLabel !== undefined
-            ? async () => revealFileInFileManager((await resolveHostPath()).absolutePath)
+            ? async () =>
+                launchFileManager((await resolveHostPath()).absolutePath, { reveal: true })
             : undefined
         }
         revealLabel={revealInFileManagerLabel}

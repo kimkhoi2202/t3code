@@ -37,6 +37,7 @@ interface MarkdownFileLinkProps {
   theme: "light" | "dark";
   threadRef?: ScopedThreadRef | undefined;
   onOpen?: (() => Promise<AtomCommandResult<unknown, unknown>>) | undefined;
+  onOpenInDefaultApp?: (() => Promise<AtomCommandResult<unknown, unknown>>) | undefined;
   onOpenInPanel: (panelPath: string, line: number | undefined) => void;
   resolveCopyPaths: () => Promise<ReturnType<typeof markdownFileCopyPaths>>;
   openInEditorMenuLabel: string;
@@ -61,6 +62,7 @@ export const MarkdownFileLink = memo(function MarkdownFileLink({
   theme,
   threadRef,
   onOpen,
+  onOpenInDefaultApp,
   onOpenInPanel,
   openInEditorMenuLabel,
   onOpenInBrowser,
@@ -69,20 +71,20 @@ export const MarkdownFileLink = memo(function MarkdownFileLink({
   revealLabel,
   resolveCopyPaths,
 }: MarkdownFileLinkProps) {
-  const handleOpenInEditor = () => {
-    if (!onOpen) {
+  const runOpenFile = (
+    open: (() => Promise<AtomCommandResult<unknown, unknown>>) | undefined,
+    operation: string,
+  ) => {
+    if (!open) {
       return;
     }
     void (async () => {
       try {
-        const result = await onOpen();
+        const result = await open();
         if (result._tag === "Success" || isAtomCommandInterrupted(result)) {
           return;
         }
-        reportMarkdownActionFailure(
-          { operation: "open-file-in-editor", target: targetPath },
-          result.cause,
-        );
+        reportMarkdownActionFailure({ operation, target: targetPath }, result.cause);
         const error = squashAtomCommandFailure(result);
         toastManager.add(
           stackedThreadToast({
@@ -92,10 +94,7 @@ export const MarkdownFileLink = memo(function MarkdownFileLink({
           }),
         );
       } catch (cause) {
-        reportMarkdownActionFailure(
-          { operation: "open-file-in-editor", target: targetPath },
-          cause,
-        );
+        reportMarkdownActionFailure({ operation, target: targetPath }, cause);
         toastManager.add(
           stackedThreadToast({
             type: "error",
@@ -106,6 +105,7 @@ export const MarkdownFileLink = memo(function MarkdownFileLink({
       }
     })();
   };
+  const handleOpenInEditor = () => runOpenFile(onOpen, "open-file-in-editor");
 
   const handleOpenInFilePreview = () => {
     if (threadRef && panelPath) {
@@ -251,6 +251,9 @@ export const MarkdownFileLink = memo(function MarkdownFileLink({
         [
           ...(onOpenMedia ? ([{ id: "preview-media", label: "Preview media" }] as const) : []),
           ...(onOpen ? ([{ id: "open", label: openInEditorMenuLabel }] as const) : []),
+          ...(onOpenInDefaultApp
+            ? ([{ id: "open-default-app", label: "Open in default app" }] as const)
+            : []),
           ...(onOpenInBrowser
             ? ([{ id: "open-in-browser", label: "Open in integrated browser" }] as const)
             : []),
@@ -266,6 +269,10 @@ export const MarkdownFileLink = memo(function MarkdownFileLink({
       }
       if (clicked === "open") {
         handleOpenInEditor();
+        return;
+      }
+      if (clicked === "open-default-app") {
+        runOpenFile(onOpenInDefaultApp, "open-file-in-default-app");
         return;
       }
       if (clicked === "open-in-browser") {
@@ -404,6 +411,7 @@ function areMarkdownFileLinkPropsEqual(
     previous.theme === next.theme &&
     previous.threadRef === next.threadRef &&
     previous.onOpen === next.onOpen &&
+    previous.onOpenInDefaultApp === next.onOpenInDefaultApp &&
     previous.onOpenInPanel === next.onOpenInPanel &&
     previous.openInEditorMenuLabel === next.openInEditorMenuLabel &&
     previous.onOpenInBrowser === next.onOpenInBrowser &&
