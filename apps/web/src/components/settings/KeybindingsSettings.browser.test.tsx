@@ -171,3 +171,25 @@ it("mod+F goes to this page's search and selects it, and / stays with the settin
   await userEvent.keyboard("/");
   await expect.element(screen.getByRole("combobox", { name: "Search settings" })).toHaveFocus();
 });
+
+it("clears the search on Escape, and leaves the key from closing Settings", async () => {
+  await using screen = await render(
+    <RegistryProvider>
+      <KeybindingsSettingsPanel />
+    </RegistryProvider>,
+  );
+  const search = screen.getByRole("searchbox", { name: "Search keybindings" });
+  const reachedWindow = vi.fn();
+  const listening = new AbortController();
+  window.addEventListener("keydown", reachedWindow, { signal: listening.signal });
+
+  await search.fill("terminal");
+  await userEvent.keyboard("{Escape}");
+  await expect.element(search).toHaveValue("");
+  await expect.element(search).toHaveFocus();
+  await userEvent.keyboard("{Escape}");
+  await expect.element(search).not.toHaveFocus();
+
+  listening.abort();
+  expect(reachedWindow).not.toHaveBeenCalledWith(expect.objectContaining({ key: "Escape" }));
+});

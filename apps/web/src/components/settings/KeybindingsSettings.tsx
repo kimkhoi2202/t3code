@@ -134,6 +134,8 @@ function KeybindingsSearchInput({
         onKeyDown={(event) => {
           if (event.key !== "Escape") return;
           event.preventDefault();
+          // An unhandled Escape closes the settings page.
+          event.stopPropagation();
           if (query.length > 0) onChange("");
           else event.currentTarget.blur();
         }}
