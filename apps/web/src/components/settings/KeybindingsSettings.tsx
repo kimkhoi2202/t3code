@@ -127,6 +127,7 @@ function KeybindingsSearchInput({
       </InputGroupAddon>
       <InputGroupInput
         ref={inputRef}
+        data-settings-page-search=""
         type="search"
         value={query}
         onChange={(event) => onChange(event.currentTarget.value)}
