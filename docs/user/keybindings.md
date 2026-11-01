@@ -1,7 +1,8 @@
 # Keybindings
 
 Customize shortcuts in **Settings → Keybindings** on web and desktop. That page
-also lists the command IDs and defaults available in your version.
+also lists the command IDs and defaults available in your version. A search there also finds
+commands with no shortcut yet, so you can bind one on the spot.
 
 ## Composer controls
 

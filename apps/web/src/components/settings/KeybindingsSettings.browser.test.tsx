@@ -125,3 +125,21 @@ it("re-enables Save when a When editor closes on an expression it could not pars
   await expect.element(expression).toHaveValue("terminalFocus");
   await expect.element(screen.getByRole("button", { name: "Save" })).toBeEnabled();
 });
+
+it("finds a command with no shortcut, and lets Tab leave its recorder", async () => {
+  await using screen = await render(
+    <RegistryProvider>
+      <KeybindingsSettingsPanel />
+    </RegistryProvider>,
+  );
+  await screen.getByRole("searchbox", { name: "Search keybindings" }).fill("rename");
+  const recorder = screen.getByRole("textbox", { name: "Keybinding for Thread: Rename" });
+
+  await recorder.click();
+  await expect.element(recorder).toHaveAttribute("placeholder", "Press shortcut");
+  await userEvent.tab();
+
+  await expect.element(recorder).not.toHaveFocus();
+  await expect.element(recorder).toHaveValue("");
+  await expect.element(screen.getByRole("button", { name: "Save" })).not.toBeInTheDocument();
+});

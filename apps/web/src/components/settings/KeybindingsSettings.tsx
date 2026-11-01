@@ -58,6 +58,7 @@ import {
   buildWhenVariableOptions,
   commandLabel,
   DEFAULT_WHEN_VARIABLE,
+  filterUnassignedCommands,
   isKnownWhenVariable,
   keybindingConflictLabels,
   keybindingFromKeyboardEvent,
@@ -1039,12 +1040,14 @@ function KeybindingSettingsRow(props: KeybindingRowProps) {
 
 function useNewKeybindingDraft({
   allRows,
+  initialCommand = "",
   onSave,
 }: {
   allRows: ReadonlyArray<KeybindingRow>;
+  initialCommand?: KeybindingCommand | "";
   onSave: (input: ServerUpsertKeybindingInput) => void;
 }) {
-  const [commandDraft, setCommandDraft] = useState<KeybindingCommand | "">("");
+  const [commandDraft, setCommandDraft] = useState(initialCommand);
   const [draft, setDraft] = useReducer(keybindingRowDraftReducer, {
     keyDraft: "",
     whenDraft: undefined,
@@ -1071,7 +1074,9 @@ function useNewKeybindingDraft({
   };
 
   const captureKeybinding = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Tab" && !isRecording) return;
+    // Focus starts recording here, so bare Tab has to stay free to leave the field.
+    const isChord = isRecording && (event.metaKey || event.ctrlKey || event.altKey);
+    if (event.key === "Tab" && !isChord) return;
     event.preventDefault();
     if (event.key === "Escape") {
       // An unhandled Escape closes the settings page.
@@ -1177,14 +1182,17 @@ function NewKeybindingWhen({
   variables: ReadonlyArray<WhenVariableOption>;
 }) {
   return (
-    <WhenClauseControl
-      label={draft.commandLabelText}
-      expression={draft.whenDraftExpression}
-      value={draft.whenDraft}
-      variables={variables}
-      onChange={(whenDraft) => draft.setDraft({ whenDraft })}
-      onValidityChange={(isWhenDraftValid) => draft.setDraft({ isWhenDraftValid })}
-    />
+    <span className="flex h-6 items-center gap-1.5">
+      <span className="text-xs leading-none text-muted-foreground/70">When</span>
+      <WhenClauseControl
+        label={draft.commandLabelText}
+        expression={draft.whenDraftExpression}
+        value={draft.whenDraft}
+        variables={variables}
+        onChange={(whenDraft) => draft.setDraft({ whenDraft })}
+        onValidityChange={(isWhenDraftValid) => draft.setDraft({ isWhenDraftValid })}
+      />
+    </span>
   );
 }
 
@@ -1224,12 +1232,7 @@ function NewKeybindingSettingsRow(props: NewKeybindingProps) {
     <SettingsRow
       className="bg-muted/15"
       title="New keybinding"
-      description={
-        <span className="flex h-6 items-center gap-1.5">
-          <span className="text-xs leading-none text-muted-foreground/70">When</span>
-          <NewKeybindingWhen draft={draft} variables={variables} />
-        </span>
-      }
+      description={<NewKeybindingWhen draft={draft} variables={variables} />}
       control={
         <div className="flex flex-wrap items-center gap-2">
           <NewKeybindingCommandSelect
@@ -1243,6 +1246,41 @@ function NewKeybindingSettingsRow(props: NewKeybindingProps) {
             {isSaving ? "Saving" : "Save"}
           </Button>
           <NewKeybindingCancelIcon isSaving={isSaving} onCancel={onCancel} />
+        </div>
+      }
+    />
+  );
+}
+
+function UnassignedKeybindingRow({
+  command,
+  allRows,
+  variables,
+  isSaving,
+  onSave,
+}: {
+  command: KeybindingCommand;
+  allRows: ReadonlyArray<KeybindingRow>;
+  variables: ReadonlyArray<WhenVariableOption>;
+  isSaving: boolean;
+  onSave: (input: ServerUpsertKeybindingInput) => void;
+}) {
+  const draft = useNewKeybindingDraft({ allRows, initialCommand: command, onSave });
+
+  return (
+    <SettingsRow
+      className="rounded-none"
+      title={commandLabel(command)}
+      description={<NewKeybindingWhen draft={draft} variables={variables} />}
+      control={
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
+          <KeybindingConflictWarning labels={draft.conflictLabels} />
+          {draft.canSave ? (
+            <Button size="sm" disabled={isSaving} onClick={draft.save}>
+              {isSaving ? "Saving" : "Save"}
+            </Button>
+          ) : null}
+          <NewKeybindingKeyInput draft={draft} className="w-44" />
         </div>
       }
     />
@@ -1348,6 +1386,7 @@ export function KeybindingsSettingsPanel() {
   const whenVariables = buildWhenVariableOptions();
   const { commandOptions, allRows } = useKeybindingCatalog();
   const rows = filterKeybindingRows(allRows, query);
+  const unassignedCommands = filterUnassignedCommands(commandOptions, allRows, query);
   const groups = groupKeybindingRows(rows);
   const anchorIds = keybindingAnchorIds(rows);
 
@@ -1524,20 +1563,33 @@ export function KeybindingsSettingsPanel() {
           </SettingsGroup>
         ) : null}
 
-        {groups.length > 0 ? (
-          <KeybindingsGroups
-            groups={groups}
-            anchorIds={anchorIds}
-            savingCommand={savingCommand}
-            {...rowActions}
-          />
-        ) : (
+        <KeybindingsGroups
+          groups={groups}
+          anchorIds={anchorIds}
+          savingCommand={savingCommand}
+          {...rowActions}
+        />
+        {unassignedCommands.length > 0 ? (
+          <SettingsSection id="keybindings-unassigned" title="Unassigned">
+            {unassignedCommands.map((command) => (
+              <UnassignedKeybindingRow
+                key={command}
+                command={command}
+                allRows={allRows}
+                variables={whenVariables}
+                isSaving={savingCommand === command}
+                onSave={saveKeybinding}
+              />
+            ))}
+          </SettingsSection>
+        ) : null}
+        {groups.length === 0 && unassignedCommands.length === 0 ? (
           <SettingsGroup>
             <div className="px-4 py-12 text-center text-sm text-muted-foreground">
               No keybindings match your search.
             </div>
           </SettingsGroup>
-        )}
+        ) : null}
       </div>
     </SettingsPageContainer>
   );

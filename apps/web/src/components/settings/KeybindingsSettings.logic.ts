@@ -294,21 +294,43 @@ export function buildKeybindingRows(
   return rowsWithConflicts;
 }
 
+// Every word can match anywhere, so "rename thread" finds "Thread: Rename".
+function matchesKeybindingSearch(query: string, fields: ReadonlyArray<string>): boolean {
+  const normalizedFields = fields.map((field) => field.toLowerCase());
+  return query
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .every((word) => normalizedFields.some((field) => field.includes(word)));
+}
+
 export function filterKeybindingRows(
   rows: ReadonlyArray<KeybindingRow>,
   query: string,
 ): ReadonlyArray<KeybindingRow> {
-  const normalizedQuery = query.trim().toLowerCase();
-  if (normalizedQuery.length === 0) return rows;
-  return rows.filter((row) => {
-    return (
-      row.command.toLowerCase().includes(normalizedQuery) ||
-      commandLabel(row.command).toLowerCase().includes(normalizedQuery) ||
-      row.key.toLowerCase().includes(normalizedQuery) ||
-      row.when.toLowerCase().includes(normalizedQuery) ||
-      row.source.toLowerCase().includes(normalizedQuery)
-    );
-  });
+  return rows.filter((row) =>
+    matchesKeybindingSearch(query, [
+      row.command,
+      commandLabel(row.command),
+      row.key,
+      row.when,
+      row.source,
+    ]),
+  );
+}
+
+/** Commands with no shortcut yet. Only a search lists them, so the page opens on what's bound. */
+export function filterUnassignedCommands(
+  commands: ReadonlyArray<KeybindingCommandOption>,
+  rows: ReadonlyArray<KeybindingRow>,
+  query: string,
+): ReadonlyArray<KeybindingCommandOption> {
+  if (query.trim().length === 0) return [];
+  const assigned = new Set(rows.map((row) => row.command));
+  return commands.filter(
+    (command) =>
+      !assigned.has(command) && matchesKeybindingSearch(query, [command, commandLabel(command)]),
+  );
 }
 
 function collectWhenIdentifiersFromNode(
