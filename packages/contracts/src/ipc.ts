@@ -1006,7 +1006,8 @@ export interface DesktopBridge {
   getClientPlatform: () => string;
   setNotificationBadge: (badge: { count: number; image: string | null }) => Promise<void>;
   onNotificationBadgeClear: (listener: () => void) => () => void;
-  onTrackpadScrollBegin: (listener: () => void) => () => void;
+  /** `swipeNavigation` follows macOS "Swipe between pages" and is always true elsewhere. */
+  onTrackpadScrollBegin: (listener: (swipeNavigation: boolean) => void) => () => void;
   onTrackpadScrollEnd: (listener: () => void) => () => void;
   /**
    * Renderer `window.focus()` cannot raise an Electron window, and on Wayland

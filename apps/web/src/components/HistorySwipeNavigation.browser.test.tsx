@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 
-import { render } from "../../test/render";
+import { render, stubGlobal } from "../../test/render";
 import { HistorySwipeNavigation } from "./HistorySwipeNavigation";
 
 const navigateHistory = vi.hoisted(() => vi.fn());
@@ -57,5 +57,27 @@ describe("HistorySwipeNavigation", () => {
     }
 
     expect(navigateHistory).toHaveBeenCalledTimes(navigates ? 1 : 0);
+  });
+
+  it.each([
+    ["swiping back navigates while macOS Swipe between pages is on", true],
+    ["swiping back keeps the thread while macOS Swipe between pages is off", false],
+  ] as const)("%s", async (_name, swipeNavigation) => {
+    navigateHistory.mockReset();
+    let scrollBegin: ((swipeNavigation: boolean) => void) | undefined;
+    using _bridge = stubGlobal("desktopBridge", {
+      onTrackpadScrollBegin: (listener: (swipeNavigation: boolean) => void) => {
+        scrollBegin = listener;
+        return () => {};
+      },
+      onTrackpadScrollEnd: () => () => {},
+    });
+    await using screen = await render(<HistorySwipeNavigation />);
+    const panel = screen.container.appendChild(document.createElement("div"));
+
+    scrollBegin?.(swipeNavigation);
+    swipe(panel, -130);
+
+    expect(navigateHistory).toHaveBeenCalledTimes(swipeNavigation ? 1 : 0);
   });
 });

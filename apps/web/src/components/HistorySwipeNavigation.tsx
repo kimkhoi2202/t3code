@@ -95,6 +95,7 @@ export function HistorySwipeNavigation() {
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- window wheel and desktop gesture listeners track trackpad swipes
   useEffect(() => {
     let gesture: SwipeGesture | null = null;
+    let swipeNavigation = true;
     const hideIndicator = () =>
       setSwipe((current) => (current === null ? null : { ...current, tracking: false }));
     // The fingers lifted: navigate if the swipe went far enough, then ignore its momentum.
@@ -106,14 +107,20 @@ export function HistorySwipeNavigation() {
       hideIndicator();
     };
     // Chromium brackets each trackpad scroll, momentum included, with these.
-    const unsubscribeScrollBegin = window.desktopBridge?.onTrackpadScrollBegin(() => {
-      if (gesture?.kind === "ignored") gesture = null;
+    const unsubscribeScrollBegin = window.desktopBridge?.onTrackpadScrollBegin((enabled) => {
+      swipeNavigation = enabled;
+      // Wheel events can arrive before this message, so drop a gesture they started.
+      if (!enabled) {
+        gesture = null;
+        hideIndicator();
+      } else if (gesture?.kind === "ignored") gesture = null;
     });
     const unsubscribeScrollEnd = window.desktopBridge?.onTrackpadScrollEnd(() => {
       if (gesture?.kind === "tracking") release();
       gesture = null;
     });
     const onWheel = (event: WheelEvent) => {
+      if (!swipeNavigation) return;
       if (gesture === null) {
         gesture =
           event.ctrlKey || event.deltaMode !== WheelEvent.DOM_DELTA_PIXEL

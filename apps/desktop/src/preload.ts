@@ -93,7 +93,8 @@ contextBridge.exposeInMainWorld("desktopBridge", {
     return () => ipcRenderer.removeListener(IpcChannels.SET_NOTIFICATION_BADGE_CHANNEL, handler);
   },
   onTrackpadScrollBegin: (listener) => {
-    const handler = () => listener();
+    const handler = (_event: Electron.IpcRendererEvent, swipeNavigation: unknown) =>
+      listener(swipeNavigation !== false);
     ipcRenderer.on(IpcChannels.TRACKPAD_SCROLL_BEGIN_CHANNEL, handler);
     return () => ipcRenderer.removeListener(IpcChannels.TRACKPAD_SCROLL_BEGIN_CHANNEL, handler);
   },
