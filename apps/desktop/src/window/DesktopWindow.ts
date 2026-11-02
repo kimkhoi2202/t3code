@@ -822,7 +822,11 @@ export const make = Effect.gen(function* () {
     window.webContents.on("input-event", (_event, input) => {
       if (window.isDestroyed()) return;
       if (input.type === "gestureScrollBegin") {
-        window.webContents.send(TRACKPAD_SCROLL_BEGIN_CHANNEL);
+        window.webContents.send(
+          TRACKPAD_SCROLL_BEGIN_CHANNEL,
+          environment.platform !== "darwin" ||
+            Electron.systemPreferences.isSwipeTrackingFromScrollEventsEnabled(),
+        );
       } else if (input.type === "gestureScrollEnd") {
         window.webContents.send(TRACKPAD_SCROLL_END_CHANNEL);
       }

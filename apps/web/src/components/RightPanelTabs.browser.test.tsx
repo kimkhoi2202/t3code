@@ -17,12 +17,14 @@ vi.mock("../navigationHistory", () => ({ canNavigateHistory: () => true, navigat
 // Chromium starts a gesture scroll, and Electron reports its begin, only for a
 // wheel event the page did not preventDefault; it then scrolls the latched scroller.
 function trackpad() {
-  const begin = new Set<() => void>();
+  const begin = new Set<(swipeNavigation: boolean) => void>();
   const end = new Set<() => void>();
-  const subscribe = (listeners: Set<() => void>) => (listener: () => void) => {
-    listeners.add(listener);
-    return () => listeners.delete(listener);
-  };
+  function subscribe<Listener>(listeners: Set<Listener>) {
+    return (listener: Listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    };
+  }
   let scrolling = false;
   return {
     bridge: { onTrackpadScrollBegin: subscribe(begin), onTrackpadScrollEnd: subscribe(end) },
@@ -47,7 +49,7 @@ function trackpad() {
         if (scroller) scroller.scrollLeft += deltaX;
         if (scrolling) continue;
         scrolling = true;
-        for (const listener of begin) listener();
+        for (const listener of begin) listener(true);
       }
       if (scrolling) for (const listener of end) listener();
       scrolling = false;
