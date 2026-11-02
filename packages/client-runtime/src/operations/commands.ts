@@ -252,6 +252,11 @@ export interface CancelQueuedRunInput extends ThreadCommandInput {
 
 export type MergeQueuedRunsInput = ThreadCommandInput;
 
+export interface SetQueuedRunEditPauseInput extends ThreadCommandInput {
+  readonly runId: RunId;
+  readonly paused: boolean;
+}
+
 export interface RetryWorkspacePreparationInput extends ThreadCommandInput {
   readonly runId: RunId;
 }
@@ -1072,6 +1077,18 @@ export const mergeQueuedRuns = Effect.fn("EnvironmentCommands.mergeQueuedRuns")(
     threadId: input.threadId,
   });
 });
+
+/** Pauses the queue at a queued message while it is edited, or lifts that pause. */
+export const setQueuedRunEditPause = Effect.fn("EnvironmentCommands.setQueuedRunEditPause")(
+  function* (input: SetQueuedRunEditPauseInput) {
+    return yield* dispatch({
+      type: input.paused ? "queued-run.edit.begin" : "queued-run.edit.end",
+      commandId: yield* allocateCommandId(input),
+      threadId: input.threadId,
+      runId: input.runId,
+    });
+  },
+);
 
 export const retryWorkspacePreparation = Effect.fn("EnvironmentCommands.retryWorkspacePreparation")(
   function* (input: RetryWorkspacePreparationInput) {

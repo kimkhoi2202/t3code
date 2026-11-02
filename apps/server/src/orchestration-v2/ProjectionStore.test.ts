@@ -747,6 +747,40 @@ it.effect("SQL queue readiness skips held runs without bypassing active work", (
   }).pipe(Effect.provide(layerTest)),
 );
 
+it.effect("SQL and memory shells present a queue paused for an edit like a held one", () =>
+  Effect.gen(function* () {
+    const store = yield* ProjectionStore.ProjectionStoreV2;
+    const threadId = yield* addRolledBackRecoveryCandidate("edit-paused-queue");
+    const run = (yield* store.getThreadProjection(threadId)).runs[0]!;
+    const now = yield* DateTime.now;
+    const put = (key: string, payload: Partial<typeof run>) =>
+      store.apply({
+        id: EventId.make(`edit-paused-queue:${key}`),
+        type: "run.updated",
+        threadId,
+        occurredAt: now,
+        payload: { ...run, ...payload },
+      });
+    yield* put("done", { status: "completed" });
+    const queued = { status: "queued", startedAt: null, completedAt: null } as const;
+    yield* put("paused", {
+      ...queued,
+      id: RunId.make("edit-paused-queue:paused"),
+      ordinal: 2,
+      queuePausedForEdit: true,
+    });
+    yield* put("behind", { ...queued, id: RunId.make("edit-paused-queue:behind"), ordinal: 3 });
+
+    const projection = yield* store.getThreadProjection(threadId);
+    const sqlShell = (yield* store.getShellSnapshot()).threads.find((row) => row.id === threadId)!;
+    // The run behind the pause waits on it too, so the thread reads as done, not about to start.
+    for (const shell of [sqlShell, ProjectionStore.threadShellFromProjection(projection)]) {
+      assert.equal(shell.latestRunId, run.id);
+      assert.equal(shell.status, "completed");
+    }
+  }).pipe(Effect.provide(layerTest)),
+);
+
 it.effect("SQL shells flag only an active turn blocked solely on T3 thread waits", () =>
   Effect.gen(function* () {
     const store = yield* ProjectionStore.ProjectionStoreV2;

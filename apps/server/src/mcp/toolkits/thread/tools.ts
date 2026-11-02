@@ -78,6 +78,8 @@ const queueEntry = Schema.Struct({
   queuedRunId: RunId,
   text: Schema.String,
   truncated: Schema.Boolean,
+  // Someone is editing it: the queue waits here until the edit is saved or cancelled.
+  pausedForEdit: Schema.optional(Schema.Literal(true)),
 });
 const QUEUE_READ_ACTIONS = ["list", "read"] as const;
 const QueueTool = Tool.make("t3_queue", {

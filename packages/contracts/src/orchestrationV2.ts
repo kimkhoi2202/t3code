@@ -686,6 +686,8 @@ export const OrchestrationV2Run = Schema.Struct({
   status: OrchestrationV2RunStatus,
   queuePosition: Schema.optional(Schema.NullOr(PositiveInt)),
   queueHeld: Schema.optional(Schema.Boolean),
+  // Someone is editing this queued message: the queue stops here, so later runs wait too.
+  queuePausedForEdit: Schema.optional(Schema.Boolean),
   requestedAt: Schema.DateTimeUtc,
   startedAt: Schema.NullOr(Schema.DateTimeUtc),
   completedAt: Schema.NullOr(Schema.DateTimeUtc),
@@ -3291,6 +3293,19 @@ export const OrchestrationV2Command = Schema.Union([
     text: Schema.String,
     // Replaces all attachments; absent preserves them for older clients editing text.
     attachments: Schema.optional(Schema.Array(ChatAttachment)),
+  }),
+  // Pauses the queue at a message while it is edited; queued-run.edit and queue.resume also end it.
+  Schema.Struct({
+    type: Schema.Literal("queued-run.edit.begin"),
+    commandId: CommandId,
+    threadId: ThreadId,
+    runId: RunId,
+  }),
+  Schema.Struct({
+    type: Schema.Literal("queued-run.edit.end"),
+    commandId: CommandId,
+    threadId: ThreadId,
+    runId: RunId,
   }),
   Schema.Struct({
     type: Schema.Literal("runtime-request.respond"),

@@ -64,6 +64,7 @@ describe("threadQueueControlPresentation", () => {
       canPromoteToSteer: true,
       canSendNow: false,
       isEditing: true,
+      pausedForEdit: true,
       text: "Being edited",
     });
 
@@ -71,6 +72,8 @@ describe("threadQueueControlPresentation", () => {
     expect(editing.canEdit).toBe(false);
     expect(editing.canSend).toBe(false);
     expect(editing.canDismiss).toBe(true);
+    // Its pause is this edit's own, not one left open elsewhere.
+    expect(editing.isPausedForEdit).toBe(false);
   });
 
   it("lets the owner cancel a guest's queued message but not rewrite it", () => {

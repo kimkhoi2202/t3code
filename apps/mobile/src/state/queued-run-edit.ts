@@ -10,6 +10,7 @@ import { stripAttachmentOnlyBootstrapPrompt } from "@t3tools/shared/composerCont
 import {
   makeQueuedRunEditStore,
   resolveQueuedEditExit,
+  type QueuedRunEditPause,
   type QueuedRunsAtom,
 } from "@t3tools/client-runtime/queued-run-edit";
 
@@ -65,6 +66,11 @@ export function useQueuedRunEdit(threadKey: string | null): QueuedRunEdit | null
   return threadKey === null ? null : (edits[threadKey] ?? null);
 }
 
+/** The run whose edit pause this device is lifting, until the server confirms it. */
+export function useReleasingQueuedRunEdit(threadKey: string): RunId | null {
+  return useAtomValue(queuedRunEdits.releasingAtom)[threadKey] ?? null;
+}
+
 /**
  * The run started, was cancelled, or changed elsewhere. A changed edit goes back into
  * the thread's composer when that is empty; otherwise it is dropped. Either
@@ -106,11 +112,15 @@ function exitQueuedRunEdit(threadKey: string, edit: QueuedRunEdit): void {
   );
 }
 
-/** `runs` is the thread's runs; the edit ends when its run leaves the queue. */
+/**
+ * `runs` is the thread's runs; the edit ends when its run leaves the queue. `pause` holds the
+ * thread's queue at the run on the server while the edit is open.
+ */
 export function beginQueuedRunEdit(
   threadKey: string,
   edit: QueuedRunEdit,
   runs: QueuedRunsAtom,
+  pause?: QueuedRunEditPause,
 ): void {
   const previous = getQueuedRunEdit(threadKey);
   if (previous !== null && previous.runId !== edit.runId) {
@@ -126,7 +136,7 @@ export function beginQueuedRunEdit(
   queuedRunEdits.begin(
     threadKey,
     { ...edit, originalText },
-    { runs, onRunLeftQueue: exitQueuedRunEdit },
+    { runs, onRunLeftQueue: exitQueuedRunEdit, ...(pause ? { pause } : {}) },
   );
 }
 

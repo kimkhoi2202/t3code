@@ -27,6 +27,7 @@ import {
   deleteThread,
   editQueuedRun,
   mergeQueuedRuns,
+  setQueuedRunEditPause,
   interruptThreadTurn,
   forkSideChat,
   forkThreadFromRun,
@@ -361,6 +362,12 @@ export function createThreadEnvironmentAtoms<R, E>(
     editQueuedRun: createEnvironmentCommand(runtime, {
       label: "environment-data:commands:thread:edit-queued-run",
       execute: editQueuedRun,
+      scheduler,
+      concurrency,
+    }),
+    setQueuedRunEditPause: createEnvironmentCommand(runtime, {
+      label: "environment-data:commands:thread:set-queued-run-edit-pause",
+      execute: setQueuedRunEditPause,
       scheduler,
       concurrency,
     }),

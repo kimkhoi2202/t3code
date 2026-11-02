@@ -32,7 +32,11 @@ import { useQuietThreadShell } from "../../state/entities";
 import { useEnvironmentQuery } from "../../state/query";
 import { serverEnvironment } from "../../state/server";
 import { assetImageSource } from "../../lib/assetImageSource";
-import { beginQueuedRunEdit, useQueuedRunEdit } from "../../state/queued-run-edit";
+import {
+  beginQueuedRunEdit,
+  useQueuedRunEdit,
+  useReleasingQueuedRunEdit,
+} from "../../state/queued-run-edit";
 import { environmentThreadDetails, threadEnvironment } from "../../state/threads";
 import { useAtomCommand } from "../../state/use-atom-command";
 import {
@@ -125,6 +129,7 @@ export function ThreadQueueSheet({ route }: StaticScreenProps<QueueTarget>) {
   const workflow = useThreadQueueWorkflow(target);
   const threadKey = scopedThreadKey(target.environmentId, target.threadId);
   const editing = useQueuedRunEdit(threadKey);
+  const releasingRunId = useReleasingQueuedRunEdit(threadKey);
   const pendingRequests = useAtomValue(environmentThreadDetails.pendingRequestsAtom(target));
   const editBlockedReason = queuedRunEditBlockedReason({
     openQuestionCount: pendingRequests?.userInputs.length ?? 0,
@@ -133,10 +138,22 @@ export function ThreadQueueSheet({ route }: StaticScreenProps<QueueTarget>) {
   const cancel = useAtomCommand(threadEnvironment.cancelQueuedRun, "remove queued message");
   const resume = useAtomCommand(threadEnvironment.resumeThreadQueue, "resume queue");
   const merge = useAtomCommand(threadEnvironment.mergeQueuedRuns, "merge queued messages");
+  const setEditPause = useAtomCommand(threadEnvironment.setQueuedRunEditPause, "resume queue");
+  // Older servers refuse the pause; the edit still works, without holding the queue.
+  const setOwnEditPause = useAtomCommand(threadEnvironment.setQueuedRunEditPause, {
+    label: "pause queue for edit",
+    reportFailure: false,
+  });
   const [resuming, setResuming] = useState(false);
   const [busyRunId, setBusyRunId] = useState<RunId | null>(null);
   const busyRef = useRef(false);
   const queuedRuns = workflow?.queuedRuns ?? [];
+  const pausedForEdit = (run: (typeof queuedRuns)[number]["run"]) =>
+    run.queuePausedForEdit === true && run.id !== releasingRunId;
+  // Edits open elsewhere: on another device, or here before the app restarted.
+  const pausedElsewhere = queuedRuns.filter(
+    ({ run }) => pausedForEdit(run) && run.id !== editing?.runId,
+  );
 
   const hadQueuedRuns = useRef(queuedRuns.length > 0);
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- pops the navigator once the server-side queue empties after it had runs
@@ -179,6 +196,18 @@ export function ThreadQueueSheet({ route }: StaticScreenProps<QueueTarget>) {
                 });
           }),
         }),
+        {
+          hold: () =>
+            setOwnEditPause({
+              ...target,
+              input: { threadId: target.threadId, runId, paused: true },
+            }),
+          release: () =>
+            setOwnEditPause({
+              ...target,
+              input: { threadId: target.threadId, runId, paused: false },
+            }),
+        },
       );
       navigation.goBack();
       return;
@@ -242,6 +271,28 @@ export function ThreadQueueSheet({ route }: StaticScreenProps<QueueTarget>) {
           />
         </View>
       ) : null}
+      {pausedElsewhere.length > 0 ? (
+        <View className="gap-2 py-3">
+          <Text className="text-sm text-foreground-muted">Paused while editing</Text>
+          <Button
+            label="Resume"
+            disabled={resuming || busyRunId !== null}
+            onPress={async () => {
+              if (busyRef.current) return;
+              busyRef.current = true;
+              setResuming(true);
+              for (const { run } of pausedElsewhere) {
+                await setEditPause({
+                  ...target,
+                  input: { threadId: target.threadId, runId: run.id, paused: false },
+                });
+              }
+              busyRef.current = false;
+              setResuming(false);
+            }}
+          />
+        </View>
+      ) : null}
       {editBlockedReason !== null && queuedRuns.length > 0 ? (
         <Text className="py-3 text-sm text-foreground-muted">{editBlockedReason}</Text>
       ) : null}
@@ -270,6 +321,7 @@ export function ThreadQueueSheet({ route }: StaticScreenProps<QueueTarget>) {
           editBlocked: editBlockedReason !== null,
           isEditing: editing?.runId === run.id,
           isGuestMessage: context?.guest !== undefined,
+          pausedForEdit: pausedForEdit(run),
           text,
         });
         const title =
@@ -352,6 +404,10 @@ export function ThreadQueueSheet({ route }: StaticScreenProps<QueueTarget>) {
                     {controls.isEditing ? (
                       <Text className="shrink-0 text-2xs uppercase tracking-wide text-primary">
                         Editing
+                      </Text>
+                    ) : controls.isPausedForEdit ? (
+                      <Text className="shrink-0 text-2xs uppercase tracking-wide text-foreground-muted">
+                        Paused
                       </Text>
                     ) : null}
                   </Pressable>

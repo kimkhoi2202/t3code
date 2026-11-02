@@ -30,3 +30,22 @@ export function queuedRunsInDeliveryOrder(
       );
     });
 }
+
+/**
+ * The queued run to start next. Held runs wait for Resume and are passed over, but a run paused
+ * for an edit stops the queue: nothing behind it may start with the old text still ahead of it.
+ */
+export function nextDeliverableQueuedRun(
+  projection: Pick<OrchestrationV2ThreadProjection, "runs" | "messages">,
+): OrchestrationV2Run | undefined {
+  for (const run of queuedRunsInDeliveryOrder(projection)) {
+    if (run.queuePausedForEdit === true) return undefined;
+    if (run.queueHeld !== true) return run;
+  }
+  return undefined;
+}
+
+export function withoutEditPause(run: OrchestrationV2Run): OrchestrationV2Run {
+  const { queuePausedForEdit: _paused, ...rest } = run;
+  return rest;
+}

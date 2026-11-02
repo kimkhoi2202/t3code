@@ -91,6 +91,8 @@ export function QueuedRunsControl({
     Pick<ChatMessage, "id" | "inputIntent" | "text" | "attachments">
   >;
   readonly editingRunId: RunId | null;
+  /** A run whose edit pause this client is lifting; the server has yet to confirm it. */
+  readonly releasingRunId: RunId | null;
   /** Set while something else holds the composer, such as an open question. */
   readonly editBlockedReason: string | null;
   readonly onEditQueuedRun: (request: EditQueuedRunRequest) => void;
@@ -105,6 +107,7 @@ export function QueuedRunsControl({
   const resume = useAtomCommand(threadEnvironment.resumeThreadQueue);
   const cancel = useAtomCommand(threadEnvironment.cancelQueuedRun);
   const merge = useAtomCommand(threadEnvironment.mergeQueuedRuns);
+  const setEditPause = useAtomCommand(threadEnvironment.setQueuedRunEditPause);
   const [showAll, setShowAll] = useState(false);
   const queueListId = useId();
   const [busyRunId, setBusyRunId] = useState<RunId | null>(null);
@@ -144,6 +147,7 @@ export function QueuedRunsControl({
       text,
       // A guest's message keeps the guest's words; the owner can cancel it, not rewrite it.
       editable: context?.guest === undefined,
+      pausedForEdit: run.queuePausedForEdit === true && run.id !== props.releasingRunId,
       attachments,
       thumbnails: attachments
         .filter((attachment) => attachment.type === "image")
@@ -163,6 +167,7 @@ export function QueuedRunsControl({
       serverIndex: null,
       text: message.text,
       editable: true,
+      pausedForEdit: false,
       attachments: [] as ReadonlyArray<ContractChatAttachment>,
       thumbnails: (message.attachments ?? [])
         .filter(isImageAttachment)
@@ -260,6 +265,15 @@ export function QueuedRunsControl({
     setBusyRunId(null);
   };
 
+  const resumeAfterEdit = async (runId: RunId) => {
+    setBusyRunId(runId);
+    await setEditPause({
+      environmentId: props.environmentId,
+      input: { threadId: props.threadId, runId, paused: false },
+    });
+    setBusyRunId(null);
+  };
+
   const collapsible = items.length > QUEUE_VISIBLE_ROWS;
   const visibleItems = collapsible && !showAll ? items.slice(0, QUEUE_VISIBLE_ROWS - 1) : items;
   const showMerge = items.length > 1;
@@ -346,6 +360,29 @@ export function QueuedRunsControl({
                   </>
                 ) : (
                   <>
+                    {/* An edit open elsewhere: on another device, or here before a reload. */}
+                    {item.pausedForEdit && item.runId !== null ? (
+                      <>
+                        <span className="px-1 text-foreground">Paused while editing</span>
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <Button
+                                size="xs"
+                                variant="ghost"
+                                disabled={busyRunId !== null}
+                                onClick={() => {
+                                  if (item.runId !== null) void resumeAfterEdit(item.runId);
+                                }}
+                              />
+                            }
+                          >
+                            Resume
+                          </TooltipTrigger>
+                          <TooltipPopup>Continue the queue with this message as it is</TooltipPopup>
+                        </Tooltip>
+                      </>
+                    ) : null}
                     <Tooltip>
                       {/* The span keeps the tooltip, and its reason, on a disabled button. */}
                       <TooltipTrigger render={<span className="flex shrink-0" />}>

@@ -100,9 +100,11 @@ export function usageLimitRunPresentedAsLatest(
 export function latestUnheldRun(
   runs: ReadonlyArray<OrchestrationV2Run>,
 ): OrchestrationV2Run | null {
+  // A queue paused for an edit waits on a person, like a held one, so none of it presents.
+  const editPaused = runs.some((run) => run.status === "queued" && run.queuePausedForEdit === true);
   let latest: OrchestrationV2Run | null = null;
   for (const run of runs) {
-    if (run.status === "queued" && run.queueHeld === true) continue;
+    if (run.status === "queued" && (run.queueHeld === true || editPaused)) continue;
     if (latest === null || run.ordinal > latest.ordinal) latest = run;
   }
   return latest;

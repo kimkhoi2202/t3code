@@ -2,7 +2,7 @@
  * A queued-message edit ends on save, cancel, or when its run leaves the queue.
  * The store owns one watcher per edit, so "run left the queue" is handled exactly
  * once, when the projection reports it, wherever the user is in the app. It also
- * owns the edit's save, because a save outlives the view that started it.
+ * owns the edit's save and queue pause, which outlive the view that started them.
  */
 import type { MessageId, RunId } from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
@@ -95,10 +95,22 @@ export function queuedRunEditBlockedReason(input: {
   return input.openQuestionCount > 0 ? "Answer the question to edit queued messages" : null;
 }
 
+/**
+ * Pauses the thread's queue at the edited run on the server, so a turn ending
+ * mid-edit cannot start it with its old text. The store releases the pause when
+ * the edit is cancelled or replaced. A save, or the run leaving the queue, ends it
+ * on the server, and so does Resume from any client when this one goes away.
+ */
+export interface QueuedRunEditPause {
+  readonly hold: () => Promise<unknown>;
+  readonly release: () => Promise<unknown>;
+}
+
 interface ExitWatch<E> {
   readonly runs: QueuedRunsAtom;
   readonly runId: RunId;
   readonly onRunLeftQueue: (threadKey: string, edit: E) => void;
+  readonly pause?: QueuedRunEditPause | undefined;
   cancel: (() => void) | null;
 }
 
@@ -121,6 +133,10 @@ export function makeQueuedRunEditStore<E extends { readonly runId: RunId }>(opti
   const savingAtom = Atom.make<Readonly<Record<string, true>>>({}).pipe(
     Atom.keepAlive,
     Atom.withLabel(`${options.label}-saving`),
+  );
+  const releasingAtom = Atom.make<Readonly<Record<string, RunId>>>({}).pipe(
+    Atom.keepAlive,
+    Atom.withLabel(`${options.label}-releasing`),
   );
   // Each begin creates a new watch, so the watch is the edit's identity.
   const watches = new Map<string, ExitWatch<E>>();
@@ -169,6 +185,18 @@ export function makeQueuedRunEditStore<E extends { readonly runId: RunId }>(opti
     check(registry.get(watch.runs));
   };
 
+  const releasePause = (threadKey: string, watch: ExitWatch<E>) => {
+    if (watch.pause === undefined) return;
+    registry.set(releasingAtom, { ...registry.get(releasingAtom), [threadKey]: watch.runId });
+    void watch.pause.release().finally(() => {
+      const current = registry.get(releasingAtom);
+      if (current[threadKey] !== watch.runId) return;
+      const next = { ...current };
+      delete next[threadKey];
+      registry.set(releasingAtom, next);
+    });
+  };
+
   const stopWatch = (threadKey: string) => {
     const watch = watches.get(threadKey);
     if (watch === undefined) return;
@@ -180,6 +208,11 @@ export function makeQueuedRunEditStore<E extends { readonly runId: RunId }>(opti
     atom,
     /** Thread keys whose edit has a save in flight. */
     savingAtom,
+    /**
+     * The run, by thread key, whose pause this client is lifting. Until the server
+     * confirms, its projection still shows the pause, which is not someone else's.
+     */
+    releasingAtom,
     get,
     /**
      * Starts an edit, replacing any edit already open on the thread. When the
@@ -192,21 +225,30 @@ export function makeQueuedRunEditStore<E extends { readonly runId: RunId }>(opti
       watch: {
         readonly runs: QueuedRunsAtom;
         readonly onRunLeftQueue: (threadKey: string, edit: E) => void;
+        readonly pause?: QueuedRunEditPause;
       },
     ) {
+      const replaced = watches.get(threadKey);
       stopWatch(threadKey);
+      if (replaced !== undefined && replaced.runId !== edit.runId)
+        releasePause(threadKey, replaced);
       write(threadKey, edit);
       const next: ExitWatch<E> = { ...watch, runId: edit.runId, cancel: null };
       watches.set(threadKey, next);
       subscribe(threadKey, next);
+      // Not when the run had already left the queue, which ended the edit at once.
+      if (watches.get(threadKey) === next) void next.pause?.hold();
     },
     update(threadKey: string, f: (edit: E) => E) {
       const edit = get(threadKey);
       if (edit !== null) write(threadKey, f(edit));
     },
+    /** Cancels the open edit, leaving its run unchanged and continuing the queue. */
     end(threadKey: string) {
+      const watch = watches.get(threadKey);
       stopWatch(threadKey);
       write(threadKey, null);
+      if (watch !== undefined) releasePause(threadKey, watch);
     },
     /**
      * Claims the open edit for a save, or returns null when there is no edit

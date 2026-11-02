@@ -259,8 +259,12 @@ it under **Queue: Merge Queued Messages** in **Settings → Keybindings**.
 The pencil on a queued message opens it in the composer for editing. The original message
 stays in the queue until you save, and it is highlighted while you edit. The message's
 attachments appear above the text with a remove control, and new images can be added the usual way.
-The checkmark saves the queued message in place; **Cancel** next to it leaves it unchanged. Whatever
-you had typed in the composer before starting the edit is restored afterwards. If the queued
+The checkmark saves the queued message in place; **Cancel** next to it leaves it unchanged. While
+you edit, the queue waits at that message: the current turn finishes, but that message and the ones
+behind it don't start until you save or cancel, so it never sends with its old text. Whatever
+you had typed in the composer before starting the edit is restored afterwards. If you leave an edit
+open, for example by closing the app, the queue stays paused and the message shows **Paused while
+editing** on every device; **Resume** sends it as it is and continues the queue. If the queued
 message starts, is removed, or is changed from another device while you are editing, the edit ends:
 changed content moves into the composer when it is empty, and is discarded otherwise.
 

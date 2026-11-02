@@ -54,6 +54,7 @@ const baseProps = {
   optimisticMessages: [],
   threadId: "thread:test" as never,
   editingRunId: null,
+  releasingRunId: null,
   editBlockedReason: null,
   onEditQueuedRun: () => undefined,
   onCancelEdit: () => undefined,
