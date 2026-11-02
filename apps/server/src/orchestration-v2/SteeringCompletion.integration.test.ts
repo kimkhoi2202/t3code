@@ -1113,6 +1113,114 @@ it.effect.each(
   }),
 );
 
+it.effect("holds a deferred steer while its message is open for editing", () =>
+  Effect.gen(function* () {
+    const { steered, layer, startFirstTurn } = yield* nextTurnSelectionHarness(
+      "deferred-steer-edit-pause",
+    );
+    yield* Effect.gen(function* () {
+      const orchestrator = yield* Orchestrator.OrchestratorV2;
+      const worker = yield* EffectWorker.OrchestrationEffectWorkerV2;
+      const eventSink = yield* EventSink.EventSinkV2;
+      const threadId = yield* startFirstTurn;
+      const before = yield* orchestrator.getThreadProjection(threadId);
+      const run = before.runs[0]!;
+      const turn = before.providerTurns[0]!;
+      const now = yield* DateTime.now;
+      const turnReady = (id: string) =>
+        eventSink.write({
+          events: [
+            {
+              id: EventId.make(`${id}-run`),
+              type: "run.updated",
+              threadId,
+              occurredAt: now,
+              payload: run,
+            },
+            {
+              id: EventId.make(`${id}-turn`),
+              type: "provider-turn.updated",
+              threadId,
+              occurredAt: now,
+              payload: turn,
+            },
+          ],
+        });
+      yield* eventSink.write({
+        events: [
+          {
+            id: EventId.make("setup-run"),
+            type: "run.updated",
+            threadId,
+            occurredAt: now,
+            payload: { ...run, status: "preparing" },
+          },
+          {
+            id: EventId.make("setup-turn"),
+            type: "provider-turn.updated",
+            threadId,
+            occurredAt: now,
+            payload: { ...turn, status: "pending" },
+          },
+        ],
+      });
+      yield* orchestrator.dispatch({
+        type: "message.dispatch",
+        commandId: CommandId.make("steer"),
+        threadId,
+        messageId: MessageId.make("message:steer"),
+        text: "old text",
+        attachments: [],
+        deliveryIntent: "steer",
+        dispatchMode: { type: "queue_after_active" },
+        createdBy: "user",
+        creationSource: "web",
+      });
+      const queuedRun = Effect.map(orchestrator.getThreadProjection(threadId), (projection) =>
+        projection.runs.find(
+          (candidate) => candidate.userMessageId === MessageId.make("message:steer"),
+        )!,
+      );
+      const queued = yield* queuedRun;
+      assert.equal(queued.steerWhenReadyRunId, run.id);
+      yield* orchestrator.dispatch({
+        type: "queued-run.edit.begin",
+        commandId: CommandId.make("edit-begin"),
+        threadId,
+        runId: queued.id,
+      });
+
+      yield* turnReady("ready");
+      yield* worker.drain();
+      assert.deepEqual(steered, []);
+      assert.include(yield* queuedRun, { status: "queued", queuePausedForEdit: true });
+
+      const promoted = yield* orchestrator.streamDomainEvents.pipe(
+        Stream.filter(
+          (event) =>
+            event.type === "run.updated" &&
+            event.payload.id === queued.id &&
+            event.payload.status === "cancelled",
+        ),
+        Stream.take(1),
+        Stream.runDrain,
+        Effect.forkScoped,
+      );
+      yield* orchestrator.dispatch({
+        type: "queued-run.edit",
+        commandId: CommandId.make("edit-save"),
+        threadId,
+        runId: queued.id,
+        text: "new text",
+      });
+      yield* turnReady("ready-again");
+      yield* Fiber.join(promoted);
+      yield* worker.drain();
+      assert.deepEqual(steered, ["new text"]);
+    }).pipe(Effect.provide(layer));
+  }),
+);
+
 it.effect("force sends multiple queued messages and can force send a requeued message again", () =>
   Effect.gen(function* () {
     const { started, steered, layer, startFirstTurn } = yield* nextTurnSelectionHarness(

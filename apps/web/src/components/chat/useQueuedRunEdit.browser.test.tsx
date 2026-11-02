@@ -42,6 +42,8 @@ const mocks = await vi.hoisted(async () => {
     editQueuedRun: vi.fn<(value: unknown) => Promise<{ readonly _tag: "Success" | "Failure" }>>(),
     promoteQueuedRun: vi.fn<(value: unknown) => Promise<{ readonly _tag: "Success" }>>(),
     promoteCommand: {},
+    pauseCommand: {},
+    setQueuedRunEditPause: vi.fn(async (_value: unknown) => ({ _tag: "Success" as const })),
     // The projection's runs per thread, written by each test to stand in for the server.
     threadRuns: Atom.family((_key: string) =>
       Atom.make<ReadonlyArray<RunStatus> | null>(null).pipe(Atom.keepAlive),
@@ -51,7 +53,11 @@ const mocks = await vi.hoisted(async () => {
 
 vi.mock("../../state/use-atom-command", () => ({
   useAtomCommand: (command: unknown) =>
-    command === mocks.promoteCommand ? mocks.promoteQueuedRun : mocks.editQueuedRun,
+    command === mocks.promoteCommand
+      ? mocks.promoteQueuedRun
+      : command === mocks.pauseCommand
+        ? mocks.setQueuedRunEditPause
+        : mocks.editQueuedRun,
 }));
 
 vi.mock("../../hooks/useSettings", () => ({
@@ -68,6 +74,7 @@ vi.mock("../../state/threads", async () => {
       snapshotAtom: () => Atom.make(null),
       editQueuedRun: {},
       promoteQueuedRun: mocks.promoteCommand,
+      setQueuedRunEditPause: mocks.pauseCommand,
     },
     environmentThreadDetails: {
       statusAtom: () => Atom.make("ready"),

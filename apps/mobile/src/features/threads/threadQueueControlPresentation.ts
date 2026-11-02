@@ -15,6 +15,8 @@ export interface ThreadQueueRowControls {
   readonly dismissAccessibilityLabel: string;
   readonly displayText: string;
   readonly isEditing: boolean;
+  /** Held for an edit open somewhere else: another device, or before a restart. */
+  readonly isPausedForEdit: boolean;
 }
 
 export function resolveThreadQueueRowControls(input: {
@@ -26,6 +28,7 @@ export function resolveThreadQueueRowControls(input: {
   readonly isEditing?: boolean;
   /** A guest's message keeps the guest's words; the owner can cancel it, not rewrite it. */
   readonly isGuestMessage?: boolean;
+  readonly pausedForEdit?: boolean;
   readonly text: string;
 }): ThreadQueueRowControls {
   const mutationEnabled = !input.busy;
@@ -49,6 +52,7 @@ export function resolveThreadQueueRowControls(input: {
           .replace(/\s+/g, " ")
           .trim(),
     isEditing,
+    isPausedForEdit: input.pausedForEdit === true && !isEditing,
   };
 }
 

@@ -126,6 +126,84 @@ const modelSelection = {
 } satisfies ModelSelection;
 const alternateInstanceId = ProviderInstanceId.make("codex_alternate");
 
+/** A thread with an active turn and queued messages, each keyed by its text, for edit pauses. */
+const queuedEditPauseThread = Effect.fn("test.queuedEditPauseThread")(function* (
+  threadId: ThreadId,
+  queued: ReadonlyArray<string>,
+) {
+  const orchestrator = yield* Orchestrator.OrchestratorV2;
+  const events = yield* EventSink.EventSinkV2;
+  const messageId = (key: string) => MessageId.make(`${threadId}:${key}`);
+  yield* orchestrator.dispatch({
+    type: "thread.create",
+    createdBy: "user",
+    creationSource: "web",
+    commandId: CommandId.make(`${threadId}:create`),
+    threadId,
+    projectId: ProjectId.make(`${threadId}:project`),
+    title: "Edit pause",
+    modelSelection,
+    runtimeMode: "full-access",
+    interactionMode: "default",
+    branch: null,
+    worktreePath: process.cwd(),
+  });
+  const send = (key: string) =>
+    orchestrator.dispatch({
+      type: "message.dispatch",
+      createdBy: "user",
+      creationSource: "web",
+      commandId: CommandId.make(`${threadId}:send:${key}`),
+      threadId,
+      messageId: messageId(key),
+      text: key,
+      attachments: [],
+      modelSelection,
+      dispatchMode: { type: key === "active" ? "start_immediately" : "queue_after_active" },
+    });
+  for (const key of ["active", ...queued]) yield* send(key);
+  const read = orchestrator.getThreadProjection(threadId);
+  const runFor = (projection: OrchestrationV2ThreadProjection, key: string) => {
+    const run = projection.runs.find((candidate) => candidate.userMessageId === messageId(key));
+    assert.isDefined(run);
+    return run;
+  };
+  const textFor = (projection: OrchestrationV2ThreadProjection, key: string) =>
+    projection.messages.find((message) => message.id === messageId(key))?.text;
+  const pause = (key: string, type: "queued-run.edit.begin" | "queued-run.edit.end") =>
+    read.pipe(
+      Effect.flatMap((projection) =>
+        orchestrator.dispatch({
+          type,
+          commandId: CommandId.make(`${threadId}:${type}:${key}`),
+          threadId,
+          runId: runFor(projection, key).id,
+        }),
+      ),
+    );
+  // Ends a run as its provider would, then lets the queue start what may start next.
+  const finish = Effect.fn("test.queuedEditPauseThread.finish")(function* (key: string) {
+    const run = runFor(yield* read, key);
+    const now = yield* DateTime.now;
+    yield* events.write({
+      events: [
+        {
+          id: EventId.make(`${threadId}:${key}:completed`),
+          type: "run.updated",
+          threadId,
+          runId: run.id,
+          providerInstanceId: run.providerInstanceId,
+          occurredAt: now,
+          payload: { ...run, status: "completed", startedAt: now, completedAt: now },
+        },
+      ],
+    });
+    yield* orchestrator.resumeQueuedRuns;
+    return yield* read;
+  });
+  return { send, read, runFor, textFor, pause, finish };
+});
+
 const layerVcsDriverRegistryTest = VcsDriverRegistry.layer.pipe(
   Layer.provide(VcsProcess.layer),
   Layer.provide(layerServerConfig),
@@ -9757,6 +9835,18 @@ it.layer(layerTest)("OrchestrationV2LayerLive lifecycle", (it) => {
         const held = yield* orchestrator.getThreadProjection(threadId);
         assert.equal(held.runs.find((run) => run.id === queued.id)?.status, "queued");
 
+        // An edit that ends lifts its own pause, not the provider's hold.
+        for (const edit of ["begin", "end"] as const) {
+          yield* orchestrator.dispatch({
+            type: `queued-run.edit.${edit}`,
+            commandId: CommandId.make(`${threadId}:edit-${edit}`),
+            threadId,
+            runId: queued.id,
+          });
+        }
+        const edited = yield* orchestrator.getThreadProjection(threadId);
+        assert.equal(edited.runs.find((run) => run.id === queued.id)?.status, "queued");
+
         if (release === "the reset passes") {
           yield* TestClock.adjust("61 minutes");
           yield* orchestrator.resumeQueuedRuns;
@@ -11387,6 +11477,184 @@ it.layer(layerTest)("OrchestrationV2LayerLive lifecycle", (it) => {
         after.runs.find((run) => run.id === textContinuation.id),
         { ...textContinuation, queueHeld: false },
       );
+    }),
+  );
+
+  it.effect("pauses the queue at a message being edited until the edit is saved or cancelled", () =>
+    Effect.gen(function* () {
+      const orchestrator = yield* Orchestrator.OrchestratorV2;
+      const threadId = ThreadId.make("runtime-layer-queued-edit-pause");
+      const queue = yield* queuedEditPauseThread(threadId, ["ahead", "edited", "behind"]);
+
+      yield* queue.pause("edited", "queued-run.edit.begin");
+      assert.isTrue(queue.runFor(yield* queue.read, "edited").queuePausedForEdit);
+      // The message ahead of the edit still starts when the active turn ends.
+      assert.equal(queue.runFor(yield* queue.finish("active"), "ahead").status, "starting");
+      // Nothing at or after the edited message starts; the queue does not skip past it.
+      const paused = yield* queue.finish("ahead");
+      assert.equal(queue.runFor(paused, "edited").status, "queued");
+      assert.equal(queue.runFor(paused, "behind").status, "queued");
+
+      // Saving lifts the pause, so the edited message starts at once with its new text.
+      yield* orchestrator.dispatch({
+        type: "queued-run.edit",
+        commandId: CommandId.make(`${threadId}:save`),
+        threadId,
+        runId: queue.runFor(paused, "edited").id,
+        text: "edited, revised",
+      });
+      const saved = yield* queue.read;
+      assert.equal(queue.runFor(saved, "edited").status, "starting");
+      assert.isUndefined(queue.runFor(saved, "edited").queuePausedForEdit);
+      assert.equal(queue.textFor(saved, "edited"), "edited, revised");
+
+      // Cancelling, or Resume from any client, lifts the pause and sends the message unchanged.
+      yield* queue.pause("behind", "queued-run.edit.begin");
+      assert.equal(queue.runFor(yield* queue.finish("edited"), "behind").status, "queued");
+      yield* queue.pause("behind", "queued-run.edit.end");
+      const cancelled = yield* queue.read;
+      assert.equal(queue.runFor(cancelled, "behind").status, "starting");
+      assert.equal(queue.textFor(cancelled, "behind"), "behind");
+    }),
+  );
+
+  it.effect("ends an edit pause when its message leaves the queue or the queue resumes", () =>
+    Effect.gen(function* () {
+      const orchestrator = yield* Orchestrator.OrchestratorV2;
+      const threadId = ThreadId.make("runtime-layer-queued-edit-pause-exit");
+      const queue = yield* queuedEditPauseThread(threadId, ["removed", "next"]);
+      const runId = (key: string) => queue.read.pipe(Effect.map((p) => queue.runFor(p, key).id));
+
+      // Removed: the queue continues with the message behind it.
+      yield* queue.pause("removed", "queued-run.edit.begin");
+      yield* orchestrator.dispatch({
+        type: "queued-run.cancel",
+        commandId: CommandId.make(`${threadId}:remove`),
+        threadId,
+        runId: yield* runId("removed"),
+      });
+      assert.equal(queue.runFor(yield* queue.finish("active"), "next").status, "starting");
+
+      // Merged: the merge replaced the edited text, so its pause ends.
+      yield* queue.send("merged");
+      yield* queue.send("absorbed");
+      yield* queue.pause("merged", "queued-run.edit.begin");
+      yield* orchestrator.dispatch({
+        type: "queued-run.merge",
+        commandId: CommandId.make(`${threadId}:merge`),
+        threadId,
+      });
+      const merged = yield* queue.read;
+      assert.isUndefined(queue.runFor(merged, "merged").queuePausedForEdit);
+      assert.equal(queue.textFor(merged, "merged"), "merged\n\nabsorbed");
+      assert.equal(queue.runFor(yield* queue.finish("next"), "merged").status, "starting");
+
+      // Resume continues past edit pauses as well as held messages.
+      yield* queue.send("resumed");
+      yield* queue.pause("resumed", "queued-run.edit.begin");
+      yield* orchestrator.dispatch({
+        type: "queue.resume",
+        commandId: CommandId.make(`${threadId}:resume`),
+        threadId,
+      });
+      assert.isUndefined(queue.runFor(yield* queue.read, "resumed").queuePausedForEdit);
+
+      // Sent now: an explicit start proceeds, ending the edit.
+      yield* queue.send("started");
+      yield* queue.pause("started", "queued-run.edit.begin");
+      assert.equal(queue.runFor(yield* queue.finish("merged"), "resumed").status, "starting");
+      assert.equal(queue.runFor(yield* queue.finish("resumed"), "started").status, "queued");
+      yield* orchestrator.dispatch({
+        type: "queued-run.start",
+        commandId: CommandId.make(`${threadId}:start`),
+        threadId,
+        runId: yield* runId("started"),
+      });
+      const started = queue.runFor(yield* queue.read, "started");
+      assert.equal(started.status, "starting");
+      assert.isUndefined(started.queuePausedForEdit);
+    }),
+  );
+
+  it.effect("holds the queue after a failed run while its next message is being edited", () =>
+    Effect.gen(function* () {
+      const orchestrator = yield* Orchestrator.OrchestratorV2;
+      const eventSink = yield* EventSink.EventSinkV2;
+      const threadId = ThreadId.make("runtime-layer-queued-edit-pause-failure");
+      const queue = yield* queuedEditPauseThread(threadId, ["edited"]);
+      const before = yield* queue.read;
+      const active = queue.runFor(before, "active");
+      const edited = queue.runFor(before, "edited");
+      assert.isNotNull(active.rootNodeId);
+      yield* queue.pause("edited", "queued-run.edit.begin");
+
+      const heldRunIds = yield* Queue.unbounded<RunId>();
+      const afterSequence = yield* orchestrator.getThreadEventSequence(threadId);
+      yield* eventSink.stream({ threadId, afterSequence }).pipe(
+        Stream.runForEach((stored) =>
+          stored.event.type === "run.updated" && stored.event.payload.queueHeld === true
+            ? Queue.offer(heldRunIds, stored.event.payload.id)
+            : Effect.void,
+        ),
+        Effect.forkScoped,
+      );
+      yield* Effect.yieldNow;
+
+      const now = yield* DateTime.now;
+      yield* eventSink.write({
+        events: [
+          {
+            id: EventId.make(`${threadId}:error`),
+            type: "turn-item.updated",
+            threadId,
+            runId: active.id,
+            nodeId: active.rootNodeId,
+            providerInstanceId: active.providerInstanceId,
+            occurredAt: now,
+            payload: {
+              id: TurnItemId.make(`${threadId}:error`),
+              type: "error",
+              threadId,
+              runId: active.id,
+              nodeId: active.rootNodeId,
+              providerThreadId: active.providerThreadId,
+              providerTurnId: null,
+              nativeItemRef: null,
+              parentItemId: null,
+              ordinal: 2,
+              status: "failed",
+              title: "Provider failure",
+              startedAt: now,
+              completedAt: now,
+              updatedAt: now,
+              failure: {
+                class: "provider_error",
+                message: "Provider failed.",
+                code: "provider_failed",
+                retryable: null,
+              },
+            },
+          },
+          {
+            id: EventId.make(`${threadId}:failed`),
+            type: "run.updated",
+            threadId,
+            runId: active.id,
+            nodeId: active.rootNodeId,
+            providerInstanceId: active.providerInstanceId,
+            occurredAt: now,
+            payload: { ...active, status: "failed", completedAt: now },
+          },
+        ],
+      });
+      assert.equal(yield* Queue.take(heldRunIds), edited.id);
+
+      // Ending the edit lifts its pause, not the hold: the message waits for Resume.
+      yield* queue.pause("edited", "queued-run.edit.end");
+      const ended = queue.runFor(yield* queue.read, "edited");
+      assert.equal(ended.status, "queued");
+      assert.isTrue(ended.queueHeld);
+      assert.isUndefined(ended.queuePausedForEdit);
     }),
   );
 

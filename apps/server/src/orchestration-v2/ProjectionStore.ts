@@ -8233,14 +8233,21 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, SqlClient.SqlClient> =
         )
       )`;
     };
-    // The newest run not held or outlived before it started, matching latestUnheldRun.
+    // The newest run not held, edit-paused, or outlived before it started, matching latestUnheldRun.
     const presentedShellRunId = (threadId: Statement.Fragment) => sql`(
       SELECT candidate.run_id
       FROM orchestration_v2_projection_runs candidate
       WHERE candidate.thread_id = ${threadId}
         AND NOT (
           candidate.status = 'queued'
-          AND json_extract(candidate.payload_json, '$.queueHeld') IS 1
+          AND (
+            json_extract(candidate.payload_json, '$.queueHeld') IS 1
+            OR EXISTS (
+              SELECT 1 FROM orchestration_v2_projection_runs paused
+              WHERE paused.thread_id = candidate.thread_id AND paused.status = 'queued'
+                AND json_extract(paused.payload_json, '$.queuePausedForEdit') IS 1
+            )
+          )
         )
         AND NOT (
           candidate.status = 'cancelled'

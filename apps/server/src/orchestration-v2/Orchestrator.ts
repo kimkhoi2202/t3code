@@ -194,7 +194,12 @@ import { makeProviderFailure } from "@t3tools/provider-core/server/failure";
 import * as RunExecutionService from "./RunExecutionService.ts";
 import { ProviderSessionManagerV2 } from "./ProviderSessionManager.ts";
 import { ProviderSwitchServiceV2 } from "./ProviderSwitchService.ts";
-import { isAutomaticCompletionRun, queuedRunsInDeliveryOrder } from "./QueuedRunOrder.ts";
+import {
+  isAutomaticCompletionRun,
+  nextDeliverableQueuedRun,
+  queuedRunsInDeliveryOrder,
+  withoutEditPause,
+} from "./QueuedRunOrder.ts";
 import { isRuntimePolicyAboveCeilingError, RuntimePolicyV2 } from "./RuntimePolicy.ts";
 import {
   endOrphanedNativeSubagent,
@@ -683,6 +688,8 @@ function commandThreadId(command: OrchestrationV2ServerCommand): ThreadId {
     case "queued-run.cancel":
     case "queued-run.merge":
     case "queued-run.edit":
+    case "queued-run.edit.begin":
+    case "queued-run.edit.end":
     case "runtime-request.respond":
     case "runtime-request.delivery.fail":
     case "thread.user-input.dismiss":
@@ -1017,10 +1024,21 @@ function worktreeSetupPending(
   );
 }
 
-function nextQueuedRun(
-  projection: Pick<OrchestrationV2ThreadProjection, "runs" | "messages">,
-): OrchestrationV2Run | undefined {
-  return queuedRunsInDeliveryOrder(projection).find((run) => run.queueHeld !== true);
+/** The queued run's message when it can be edited, or why it cannot be. */
+function editableQueuedMessage(
+  run: OrchestrationV2Run,
+  messages: ReadonlyArray<OrchestrationV2ConversationMessage>,
+): OrchestrationV2ConversationMessage | string {
+  const message = messages.find((candidate) => candidate.id === run.userMessageId);
+  if (message === undefined) return `Queued run ${run.id} has no user message.`;
+  if (message.delegatedCompletion !== undefined || message.notification !== undefined) {
+    return "Automatic completion deliveries cannot be edited.";
+  }
+  // The agent text and the shown text of a guest message must stay the guest's words.
+  if (message.context?.guest !== undefined) {
+    return "A guest's message cannot be edited. Cancel it instead.";
+  }
+  return message;
 }
 
 // Delegated completions, monitor notifications and unpinned scheduled deliveries never choose a
@@ -2261,7 +2279,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
     );
     const queuedRun =
       queuedRunId === undefined
-        ? nextQueuedRun(projection)
+        ? nextDeliverableQueuedRun(projection)
         : projection.runs.find((run) => run.id === queuedRunId && run.status === "queued");
     if (queuedRun === undefined) return;
     // A steer that fell back to the queue keeps its user item, hidden while the
@@ -2481,7 +2499,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
       }
       let storedQueuedRun =
         options?.queuedRunId === undefined
-          ? nextQueuedRun(projection)
+          ? nextDeliverableQueuedRun(projection)
           : projection.runs.find(
               (run) => run.id === options.queuedRunId && run.status === "queued",
             );
@@ -2493,7 +2511,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
           queuedRunCancellationEvents(projection, storedQueuedRun, yield* DateTime.now),
         );
         projection = yield* readCommandProjection(threadId);
-        storedQueuedRun = nextQueuedRun(projection);
+        storedQueuedRun = nextDeliverableQueuedRun(projection);
       }
       // A wake that outlived some of its pull requests tells only the current ones.
       const currentWake =
@@ -2517,6 +2535,13 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         projection = yield* readCommandProjection(threadId);
         storedQueuedRun = projection.runs.find((run) => run.id === runId);
       }
+      // An edit pause stops the next start, not the hold an ended run puts on the queue;
+      // without it, ending the edit would start the message where that run failed.
+      const pausedForEdit =
+        storedQueuedRun === undefined && options?.endedRunId !== undefined
+          ? queuedRunsInDeliveryOrder(projection).find((run) => run.queueHeld !== true)
+          : undefined;
+      storedQueuedRun ??= pausedForEdit;
       if (storedQueuedRun === undefined) {
         return;
       }
@@ -2608,6 +2633,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         );
         return wakes.length > 0;
       }
+      if (pausedForEdit !== undefined) return;
       // Move queued ordinals after runs that started while they waited to preserve transcript and checkpoint order.
       // Started runs have prompts; cancelled queued messages do not.
       const newerRunIds = projection.runs
@@ -3035,7 +3061,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
           ? "explicit-queue"
           : "automatic-queue";
       const startingRun: OrchestrationV2Run = {
-        ...queuedRun,
+        ...withoutEditPause(queuedRun),
         providerThreadId: queuedProviderThread.id,
         ordinal,
         status: "starting",
@@ -11786,7 +11812,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         nodeId: queuedRootNode.id,
         providerInstanceId: queuedRun.providerInstanceId,
         occurredAt: now,
-        payload: { ...queuedRun, queuePosition: 1 },
+        payload: { ...withoutEditPause(queuedRun), queuePosition: 1 },
       });
       const stops =
         isLiveRun(target) && !(yield* stopReachedRun(command, command.threadId, target.id));
@@ -11821,7 +11847,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         nodeId: queuedRootNode.id,
         providerInstanceId: queuedRun.providerInstanceId,
         occurredAt: now,
-        payload: { ...queuedRun, queuePosition: 1 },
+        payload: { ...withoutEditPause(queuedRun), queuePosition: 1 },
       });
       const stops =
         target !== undefined &&
@@ -11869,7 +11895,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         nodeId: queuedRootNode.id,
         providerInstanceId: queuedRun.providerInstanceId,
         occurredAt: now,
-        payload: { ...queuedRun, steerWhenReadyRunId: target.id },
+        payload: { ...withoutEditPause(queuedRun), steerWhenReadyRunId: target.id },
       });
       return;
     }
@@ -12070,6 +12096,28 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
     },
   );
 
+  const emitEditPauseEnded = Effect.fn("Orchestrator.emitEditPauseEnded")(function* (input: {
+    readonly command: OrchestrationV2ServerCommand;
+    readonly events: Ref.Ref<Array<OrchestrationV2DomainEvent>>;
+    readonly run: OrchestrationV2Run;
+    readonly now: DateTime.Utc;
+  }) {
+    const { run } = input;
+    if (run.queuePausedForEdit !== true) return;
+    yield* emit(
+      input.events,
+      input.command,
+    )({
+      type: "run.updated",
+      threadId: run.threadId,
+      runId: run.id,
+      ...(run.rootNodeId === null ? {} : { nodeId: run.rootNodeId }),
+      providerInstanceId: run.providerInstanceId,
+      occurredAt: input.now,
+      payload: withoutEditPause(run),
+    });
+  });
+
   const dispatchQueuedRunCancel = Effect.fn("Orchestrator.dispatchQueuedRunCancel")(function* (
     command: Extract<OrchestrationV2Command, { readonly type: "queued-run.cancel" }>,
     events: Ref.Ref<Array<OrchestrationV2DomainEvent>>,
@@ -12157,6 +12205,8 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         content: mergeQueuedMessages(group.map(({ message }) => message)),
         now,
       });
+      // The merge replaced the text being edited, so that edit, and its pause, are over.
+      yield* emitEditPauseEnded({ command, events, run: survivor.run, now });
       for (const { run } of absorbed) {
         yield* emitQueuedRunCancellation({ command, events, projection, run, now });
       }
@@ -12187,32 +12237,12 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         cause: `Run ${command.runId} is not queued.`,
       });
     }
-    const queuedMessage = projection.messages.find(
-      (candidate) => candidate.id === queuedRun.userMessageId,
-    );
-    if (queuedMessage === undefined) {
+    const queuedMessage = editableQueuedMessage(queuedRun, projection.messages);
+    if (typeof queuedMessage === "string") {
       return yield* new OrchestratorDispatchError({
         commandId: command.commandId,
         commandType: command.type,
-        cause: `Queued run ${queuedRun.id} has no user message.`,
-      });
-    }
-    if (
-      queuedMessage.delegatedCompletion !== undefined ||
-      queuedMessage.notification !== undefined
-    ) {
-      return yield* new OrchestratorDispatchError({
-        commandId: command.commandId,
-        commandType: command.type,
-        cause: "Automatic completion deliveries cannot be edited.",
-      });
-    }
-    // The agent text and the shown text of a guest message must stay the guest's words.
-    if (queuedMessage.context?.guest !== undefined) {
-      return yield* new OrchestratorDispatchError({
-        commandId: command.commandId,
-        commandType: command.type,
-        cause: "A guest's message cannot be edited. Cancel it instead.",
+        cause: queuedMessage,
       });
     }
     yield* ensureGoalCommandSupported(
@@ -12220,6 +12250,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
       { text: command.text, attachments: command.attachments ?? queuedMessage.attachments },
       queuedRunModelSelection(projection, queuedRun).instanceId,
     );
+    const now = yield* DateTime.now;
     yield* emitQueuedMessageContent({
       command,
       events,
@@ -12231,7 +12262,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         ...(command.attachments === undefined ? {} : { attachments: command.attachments }),
         ...(command.context ? { context: command.context } : {}),
       },
-      now: yield* DateTime.now,
+      now,
     });
     // Thread deletion only cleans files the thread still references.
     const keptAttachmentIds = new Set(
@@ -12255,7 +12286,59 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         } satisfies PendingOrchestrationEffectV2,
       ]);
     }
+    yield* emitEditPauseEnded({ command, events, run: queuedRun, now });
   });
+
+  const dispatchQueuedRunEditPause = Effect.fn("Orchestrator.dispatchQueuedRunEditPause")(
+    function* (
+      command: Extract<
+        OrchestrationV2Command,
+        { readonly type: "queued-run.edit.begin" | "queued-run.edit.end" }
+      >,
+      events: Ref.Ref<Array<OrchestrationV2DomainEvent>>,
+    ) {
+      const projection = yield* loadProjectionForCommand(command, ["runs", "messages"], {
+        messageRoles: ["user"],
+      });
+      const run = projection.runs.find(
+        (candidate) => candidate.id === command.runId && candidate.status === "queued",
+      );
+      const now = yield* DateTime.now;
+      if (command.type === "queued-run.edit.end") {
+        // The run may have left the queue first; its pause went with it.
+        if (run !== undefined) yield* emitEditPauseEnded({ command, events, run, now });
+        return;
+      }
+      if (run === undefined) {
+        return yield* new OrchestratorDispatchError({
+          commandId: command.commandId,
+          commandType: command.type,
+          cause: `Run ${command.runId} is not queued.`,
+        });
+      }
+      const message = editableQueuedMessage(run, projection.messages);
+      if (typeof message === "string") {
+        return yield* new OrchestratorDispatchError({
+          commandId: command.commandId,
+          commandType: command.type,
+          cause: message,
+        });
+      }
+      if (run.queuePausedForEdit === true) return;
+      yield* emit(
+        events,
+        command,
+      )({
+        type: "run.updated",
+        threadId: command.threadId,
+        runId: run.id,
+        ...(run.rootNodeId === null ? {} : { nodeId: run.rootNodeId }),
+        providerInstanceId: run.providerInstanceId,
+        occurredAt: now,
+        payload: { ...run, queuePausedForEdit: true },
+      });
+    },
+  );
 
   const subagentCount = (threadId: ThreadId) =>
     projectionStore
@@ -15822,7 +15905,11 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
             runId: run.id,
             providerInstanceId: run.providerInstanceId,
             occurredAt: now,
-            payload: { ...run, queueHeld: false },
+            // Resume also lifts edit pauses; sending one message now leaves other edits paused.
+            payload: {
+              ...(command.type === "queue.resume" ? withoutEditPause(run) : run),
+              queueHeld: false,
+            },
           });
         }
         if (queued.length === 0) {
@@ -15849,6 +15936,10 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         break;
       case "queued-run.edit":
         yield* dispatchQueuedRunEdit(command, events, effects);
+        break;
+      case "queued-run.edit.begin":
+      case "queued-run.edit.end":
+        yield* dispatchQueuedRunEditPause(command, events);
         break;
       case "checkpoint.rollback":
         yield* dispatchCheckpointRollback(command, events, effects);
@@ -15949,10 +16040,15 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
           }),
       ),
     );
-    if (command.type === "queue.resume" || command.type === "queued-run.start") {
+    if (
+      command.type === "queue.resume" ||
+      command.type === "queued-run.start" ||
+      command.type === "queued-run.edit" ||
+      command.type === "queued-run.edit.end"
+    ) {
       yield* mapDispatchError(command)(
         startNextQueuedRun(command.threadId, {
-          userStarted: true,
+          userStarted: command.type === "queue.resume" || command.type === "queued-run.start",
           ...(command.type === "queued-run.start" ? { queuedRunId: command.runId } : {}),
         }),
       );
@@ -16039,6 +16135,9 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
           command.type === "thread.guest-share.close" ||
           // Neither is merging a queue with nothing left to merge.
           command.type === "queued-run.merge" ||
+          // Nor pausing for an edit twice, or ending a pause its run already left.
+          command.type === "queued-run.edit.begin" ||
+          command.type === "queued-run.edit.end" ||
           (command.type === "thread.delete" && command.onlyIfUnused === true),
         (_planned) =>
           new OrchestratorDispatchError({
@@ -16206,11 +16305,14 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
     if (
       command.type === "queue.resume" ||
       command.type === "queued-run.start" ||
+      // Saving or ending an edit lifts its pause, so the queue continues from that message.
+      command.type === "queued-run.edit" ||
+      command.type === "queued-run.edit.end" ||
       (command.type === "thread.runtime-mode.set" && runtimeModeCeiling !== undefined)
     ) {
       yield* mapDispatchError(command)(
         startNextQueuedRun(command.threadId, {
-          userStarted: command.type !== "thread.runtime-mode.set",
+          userStarted: command.type === "queue.resume" || command.type === "queued-run.start",
           ...(command.type === "queued-run.start" ? { queuedRunId: command.runId } : {}),
         }),
       );
@@ -16452,6 +16554,8 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
                   (left.queuePosition ?? left.ordinal) - (right.queuePosition ?? right.ordinal),
               );
             for (const queued of pending) {
+              // Steering a message that is open for editing would send the text being replaced.
+              if (queued.queuePausedForEdit === true) break;
               yield* dispatchWithReceiptEffect({
                 type: "queued-message.promote-to-steer",
                 commandId: CommandId.make(

@@ -225,10 +225,15 @@ export function useQueuedRunEdit(input: {
   } = input;
   const editQueuedRunCommand = useEditQueuedRunCommand();
   const promoteQueuedRun = useAtomCommand(threadEnvironment.promoteQueuedRun);
+  // Older servers refuse the pause; the edit still works, without holding the queue.
+  const setEditPause = useAtomCommand(threadEnvironment.setQueuedRunEditPause, {
+    reportFailure: false,
+  });
   const editKey = scopedThreadKey(routeThreadRef);
   const storedEdit = useAtomValue(queuedRunEdits.atom)[editKey] ?? null;
   const editing = activeThreadId === null ? null : storedEdit;
   const isSaving = useAtomValue(queuedRunEdits.savingAtom)[editKey] === true;
+  const releasingRunId = useAtomValue(queuedRunEdits.releasingAtom)[editKey] ?? null;
   const draftTarget =
     editing === null ? threadDraftTarget : queuedRunEditDraftId(routeThreadRef, editing.runId);
 
@@ -285,6 +290,10 @@ export function useQueuedRunEdit(input: {
     );
     if (reply) store.setReplyTo(target, reply);
     const threadRef = { environmentId, threadId: activeThreadId };
+    const pauseInput = (paused: boolean) => ({
+      environmentId,
+      input: { threadId: activeThreadId, runId: request.runId, paused },
+    });
     queuedRunEdits.begin(
       editKey,
       {
@@ -310,6 +319,10 @@ export function useQueuedRunEdit(input: {
                 });
           }),
         }),
+        pause: {
+          hold: () => setEditPause(pauseInput(true)),
+          release: () => setEditPause(pauseInput(false)),
+        },
         // The run started, was cancelled, or changed from another client. A changed
         // edit moves into the thread's own draft when that draft is empty;
         // otherwise it is dropped. Edits outlive navigation, so the toast is
@@ -480,6 +493,7 @@ export function useQueuedRunEdit(input: {
 
   return {
     editingRunId: editing?.runId ?? null,
+    releasingRunId,
     isEditing: editing !== null,
     isSaving,
     draftTarget,

@@ -174,6 +174,60 @@ describe("makeQueuedRunEditStore", () => {
     expect(store.get("env:thread")).toBeNull();
   });
 
+  it("pauses the queue at the edited run until the edit is cancelled or replaced", async () => {
+    const { registry, runs, store } = setup();
+    const OTHER = RunId.make("run-2");
+    registry.set(runs, [...queued(), { id: OTHER, status: "queued" }]);
+    const pauses: Array<string> = [];
+    let settleRelease = () => {};
+    const released = new Promise<void>((resolve) => {
+      settleRelease = resolve;
+    });
+    const begin = (runId: RunId) =>
+      store.begin(
+        "env:thread",
+        { runId, text: "draft" },
+        {
+          runs,
+          onRunLeftQueue: () => {},
+          pause: {
+            hold: async () => pauses.push(`hold ${runId}`),
+            release: () => {
+              pauses.push(`release ${runId}`);
+              return released;
+            },
+          },
+        },
+      );
+
+    begin(RUN);
+    begin(RUN);
+    begin(OTHER);
+    store.end("env:thread");
+    expect(pauses).toEqual([
+      "hold run-1",
+      "hold run-1",
+      "release run-1",
+      "hold run-2",
+      "release run-2",
+    ]);
+    // Until the server confirms, the run still reads as paused but not by someone else.
+    expect(registry.get(store.releasingAtom)).toEqual({ "env:thread": OTHER });
+    settleRelease();
+    await released;
+    expect(registry.get(store.releasingAtom)).toEqual({});
+
+    // The server ends the pause when a save lands or the run leaves the queue.
+    pauses.length = 0;
+    begin(RUN);
+    store.startSave("env:thread")?.(true);
+    begin(OTHER);
+    registry.set(runs, []);
+    store.end("env:thread");
+    begin(RUN);
+    expect(pauses).toEqual(["hold run-1", "hold run-2"]);
+  });
+
   it("does not revive a cancelled edit when its save fails", () => {
     const { registry, runs, store, exits, begin } = setup();
     begin();
