@@ -1540,7 +1540,7 @@ describe("ClaudeAdapterV2 resumeThread", () => {
 });
 
 describe("ClaudeAdapterV2 resume compaction", () => {
-  it.effect("resolves and cancels the SDK resume dialog through structured runtime input", () =>
+  it.effect("auto-approves Full access tools while keeping structured dialogs interactive", () =>
     Effect.scoped(
       Effect.gen(function* () {
         const fileSystem = yield* FileSystem.FileSystem;
@@ -1614,6 +1614,7 @@ describe("ClaudeAdapterV2 resume compaction", () => {
         const shellSafetyReason =
           "Dangerous rm operation not ruled out — the shell may read this command differently than it was parsed";
         for (const [safetyIndex, { askRule, reason }] of [
+          { askRule: false, reason: "Your organization requires approval for this tool" },
           { askRule: false, reason: shellSafetyReason },
           { askRule: true, reason: shellSafetyReason },
           {
@@ -1660,22 +1661,13 @@ describe("ClaudeAdapterV2 resume compaction", () => {
               Effect.map((event) => ({ type: "approval", event }) as const),
             ),
           );
-          assert.equal(safety.type, askRule ? "approval" : "decision");
+          assert.equal(safety.type, "decision", "Full access raised a tool approval request");
           if (safety.type === "decision") {
-            assert.equal(safety.result?.behavior, "deny");
-            if (safety.result?.behavior === "deny") {
-              assert.include(safety.result.message, reason);
-              assert.notInclude(safety.result.message, "\u001b[");
-            }
-          } else if (
-            Option.isSome(safety.event) &&
-            safety.event.value.type === "runtime_request.updated"
-          ) {
-            yield* runtime.respondToRuntimeRequest({
-              requestId: safety.event.value.runtimeRequest.id,
-              decision: "decline",
+            assert.deepEqual(safety.result, {
+              behavior: "allow",
+              updatedInput: { command: "for pair in a b; do echo $pair; done" },
+              toolUseID: `tool-shell-safety-${safetyIndex}`,
             });
-            assert.equal((yield* Fiber.join(safetyDecision))?.behavior, "deny");
           }
           yield* Fiber.interrupt(safetyRequest);
         }
@@ -4129,8 +4121,7 @@ describe("ClaudeAdapterV2 background wake turns", () => {
         yield* start("/unrestricted");
         assert.equal(harness.getOpenedOptions()?.permissionMode, "bypassPermissions");
         assert.equal(harness.getOpenedOptions()?.allowDangerouslySkipPermissions, true);
-        // Forwarded asks (including ask rules and settings fallback) still need a decision
-        // before queued init/status frames arrive.
+        // Full access applies before init; a reported CLI downgrade restores approval checks.
         for (const { phase, frame } of [
           {
             phase: "init",
@@ -4175,16 +4166,11 @@ describe("ClaudeAdapterV2 background wake turns", () => {
           );
           assert.equal(
             forwardedFirst.type,
-            "request",
-            `CLI-forwarded Bash must ask before the queued ${phase} frame reaches the adapter`,
+            "decision",
+            `Full access must approve Bash before the queued ${phase} frame reaches the adapter`,
           );
-          if (forwardedFirst.type !== "request") return;
-          assert.equal(forwardedFirst.event.runtimeRequest.kind, "command");
-          yield* harness.runtime.respondToRuntimeRequest({
-            requestId: forwardedFirst.event.runtimeRequest.id,
-            decision: "decline",
-          });
-          assert.equal((yield* Fiber.join(forwardedDecision))?.behavior, "deny");
+          if (forwardedFirst.type !== "decision") return;
+          assert.equal(forwardedFirst.result?.behavior, "allow");
           yield* harness.offerAndWait(frame);
         }
         const fallbackDecision = yield* Effect.promise(() =>
@@ -4884,15 +4870,12 @@ describe("ClaudeAdapterV2 background wake turns", () => {
             signal: new AbortController().signal,
             toolUseID: id,
             requestId: "weather-request",
+            decisionReason: "Your organization requires approval for this tool",
           },
         ),
-      ).pipe(Effect.forkScoped);
-      const request = yield* Queue.take(harness.runtimeRequestReceipts);
-      yield* harness.runtime.respondToRuntimeRequest({
-        requestId: request.runtimeRequest.id,
-        decision: "accept",
-      });
-      yield* Fiber.join(permission);
+      );
+      assert.equal(permission?.behavior, "allow");
+      assert.isFalse(harness.events.some((event) => event.type === "runtime_request.updated"));
       yield* harness.offerAndWait(
         claudeSdkFrame({
           type: "assistant",
