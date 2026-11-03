@@ -9,6 +9,7 @@ import {
   type Ref,
   use,
   useEffect,
+  useEffectEvent,
   useImperativeHandle,
   useLayoutEffect,
   useRef,
@@ -136,6 +137,26 @@ export function AssistantSelectionToolbar({
   const actionsRef = useRef<ReturnType<typeof observeSelectionActions> | null>(null);
   const backgroundThread = use(BackgroundThreadContext);
 
+  const dismiss = () => {
+    actionsRef.current?.cancel();
+    setSelection(null);
+  };
+  // True whenever there was a selection to cite, even if the composer then declines it.
+  const cite = (current: ToolbarSelection | null) => {
+    if (!current || current.citation.text.length > ASSISTANT_CITATION_MAX_TEXT_LENGTH) return false;
+    if (onCite(current.citation, current.sourceAnchor)) {
+      window.getSelection()?.removeAllRanges();
+      dismiss();
+    }
+    return true;
+  };
+  // A triple-click selects a paragraph and cites it at once, without waiting for the button.
+  const citeTripleClick = useEffectEvent((event: MouseEvent) => {
+    if (viewport && event.button === 0 && event.detail === 3) {
+      cite(readCitableSelection(viewport, threadRef, null));
+    }
+  });
+
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- measures the toolbar DOM node and clamps its position inside the window before paint
   useLayoutEffect(() => {
     const toolbar = toolbarRef.current;
@@ -176,12 +197,15 @@ export function AssistantSelectionToolbar({
       event.stopPropagation();
       toolbar.focus({ preventScroll: true });
     };
+    const onClick = (event: MouseEvent) => citeTripleClick(event);
     // Tab belongs to the foreground chat; a background timeline only follows its selection.
     if (!backgroundThread) document.addEventListener("keydown", focusActions, true);
     document.addEventListener("selectionchange", actions.selectionChanged);
+    viewport.addEventListener("click", onClick);
     return () => {
       document.removeEventListener("keydown", focusActions, true);
       document.removeEventListener("selectionchange", actions.selectionChanged);
+      viewport.removeEventListener("click", onClick);
       actions.dispose();
       actionsRef.current = null;
     };
@@ -189,19 +213,6 @@ export function AssistantSelectionToolbar({
 
   const tooLong =
     selection !== null && selection.citation.text.length > ASSISTANT_CITATION_MAX_TEXT_LENGTH;
-  const dismiss = () => {
-    actionsRef.current?.cancel();
-    setSelection(null);
-  };
-  // True whenever there was a selection to cite, even if the composer then declines it.
-  const cite = (current: ToolbarSelection | null) => {
-    if (!current || current.citation.text.length > ASSISTANT_CITATION_MAX_TEXT_LENGTH) return false;
-    if (onCite(current.citation, current.sourceAnchor)) {
-      window.getSelection()?.removeAllRanges();
-      dismiss();
-    }
-    return true;
-  };
   // The shortcut reads the selection itself, so it need not wait for the button's delay.
   useImperativeHandle(ref, () => ({
     citeSelection: () => cite(viewport && readCitableSelection(viewport, threadRef, null)),
