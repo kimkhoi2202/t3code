@@ -29,8 +29,95 @@ import { Button } from "../ui/button";
 import { BackgroundThreadContext } from "./backgroundThread";
 
 export interface AssistantSelectionToolbarHandle {
-  /** Cites the selection the toolbar is showing; false when there is none to cite. */
+  /** Cites the highlighted reply text, even before the toolbar shows; false when there is none. */
   citeSelection: () => boolean;
+}
+
+interface ToolbarSelection {
+  citation: AssistantCitation;
+  position: SelectionActionPoint;
+  sourceAnchor: AssistantCitationSourceAnchor;
+}
+
+/** The viewport's highlighted reply text as a citation, or null when none of it can be cited. */
+function readCitableSelection(
+  viewport: HTMLElement,
+  threadRef: ScopedThreadRef,
+  pointer: SelectionActionPoint | null,
+): ToolbarSelection | null {
+  const captured = captureAssistantTextSelection(viewport, window.getSelection());
+  const messageId = captured?.source.dataset.assistantCitationSource;
+  if (!captured || !messageId) return null;
+  const rect = captured.range.getBoundingClientRect();
+  const viewportRect = viewport.getBoundingClientRect();
+  if (!isSelectionRectVisible(rect, [viewportRect])) return null;
+  // A selection can cross blocks with different clipping ancestors.
+  const common = captured.range.commonAncestorContainer;
+  const walker = document.createTreeWalker(common, NodeFilter.SHOW_TEXT);
+  let node = common.nodeType === Node.TEXT_NODE ? common : walker.nextNode();
+  let visible = false;
+  for (; node && !visible; node = walker.nextNode()) {
+    if (!captured.range.intersectsNode(node)) continue;
+    if (node.parentElement && getComputedStyle(node.parentElement).userSelect === "none") continue;
+    const fragment = document.createRange();
+    fragment.selectNodeContents(node);
+    if (node === captured.range.startContainer) {
+      fragment.setStart(node, captured.range.startOffset);
+    }
+    if (node === captured.range.endContainer) {
+      fragment.setEnd(node, captured.range.endOffset);
+    }
+    if (!fragment.toString().trim()) continue;
+    const lines = Array.from(fragment.getClientRects());
+    if (!lines.some((line) => isSelectionRectVisible(line, [viewportRect]))) continue;
+    const clips: Pick<DOMRect, "left" | "right" | "top" | "bottom">[] = [viewportRect];
+    for (
+      let element = node.parentElement;
+      element && element !== viewport;
+      element = element.parentElement
+    ) {
+      const style = getComputedStyle(element);
+      const clipX = style.overflowX !== "visible";
+      const clipY = style.overflowY !== "visible";
+      if (!clipX && !clipY) continue;
+      const bounds = element.getBoundingClientRect();
+      const left = bounds.left + element.clientLeft;
+      const top = bounds.top + element.clientTop;
+      clips.push({
+        left: clipX ? left : -Infinity,
+        right: clipX ? left + element.clientWidth : Infinity,
+        top: clipY ? top : -Infinity,
+        bottom: clipY ? top + element.clientHeight : Infinity,
+      });
+    }
+    visible = lines.some((line) => isSelectionRectVisible(line, clips));
+  }
+  if (!visible) return null;
+  const rects = captured.range.getClientRects();
+  const pointerOnText =
+    pointer !== null &&
+    Array.from(rects).some(
+      (line) =>
+        pointer.x >= line.left - 8 &&
+        pointer.x <= line.right + 8 &&
+        pointer.y >= line.top - 8 &&
+        pointer.y <= line.bottom + 8,
+    );
+  return {
+    sourceAnchor: { source: captured.source, range: captured.range, viewport },
+    citation: {
+      version: 1,
+      ...threadRef,
+      messageId: MessageId.make(messageId),
+      ...captured.selector,
+    },
+    position: resolveSelectionActionPosition({
+      bounds: viewportRect,
+      selectionRect: rects.item(rects.length - 1) ?? rect,
+      pointer: pointerOnText ? pointer : null,
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+    }),
+  };
 }
 
 export function AssistantSelectionToolbar({
@@ -44,11 +131,7 @@ export function AssistantSelectionToolbar({
   threadRef: ScopedThreadRef;
   onCite: (citation: AssistantCitation, sourceAnchor: AssistantCitationSourceAnchor) => boolean;
 }) {
-  const [selection, setSelection] = useState<{
-    citation: AssistantCitation;
-    position: SelectionActionPoint;
-    sourceAnchor: AssistantCitationSourceAnchor;
-  } | null>(null);
+  const [selection, setSelection] = useState<ToolbarSelection | null>(null);
   const toolbarRef = useRef<HTMLButtonElement>(null);
   const actionsRef = useRef<ReturnType<typeof observeSelectionActions> | null>(null);
   const backgroundThread = use(BackgroundThreadContext);
@@ -65,99 +148,12 @@ export function AssistantSelectionToolbar({
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- subscribes to document selectionchange and keydown to track text selections in the viewport
   useEffect(() => {
     if (!viewport) return;
-    const clear = () => setSelection(null);
-    const update = (pointer: SelectionActionPoint | null) => {
-      const nativeSelection = window.getSelection();
-      const captured = captureAssistantTextSelection(viewport, nativeSelection);
-      const messageId = captured?.source.dataset.assistantCitationSource;
-      if (!captured || !messageId) {
-        clear();
-        return;
-      }
-      const rect = captured.range.getBoundingClientRect();
-      const viewportRect = viewport.getBoundingClientRect();
-      if (!isSelectionRectVisible(rect, [viewportRect])) {
-        clear();
-        return;
-      }
-      // A selection can cross blocks with different clipping ancestors.
-      const common = captured.range.commonAncestorContainer;
-      const walker = document.createTreeWalker(common, NodeFilter.SHOW_TEXT);
-      let node = common.nodeType === Node.TEXT_NODE ? common : walker.nextNode();
-      let visible = false;
-      for (; node && !visible; node = walker.nextNode()) {
-        if (!captured.range.intersectsNode(node)) continue;
-        if (node.parentElement && getComputedStyle(node.parentElement).userSelect === "none")
-          continue;
-        const fragment = document.createRange();
-        fragment.selectNodeContents(node);
-        if (node === captured.range.startContainer) {
-          fragment.setStart(node, captured.range.startOffset);
-        }
-        if (node === captured.range.endContainer) {
-          fragment.setEnd(node, captured.range.endOffset);
-        }
-        if (!fragment.toString().trim()) continue;
-        const lines = Array.from(fragment.getClientRects());
-        if (!lines.some((line) => isSelectionRectVisible(line, [viewportRect]))) continue;
-        const clips: Pick<DOMRect, "left" | "right" | "top" | "bottom">[] = [viewportRect];
-        for (
-          let element = node.parentElement;
-          element && element !== viewport;
-          element = element.parentElement
-        ) {
-          const style = getComputedStyle(element);
-          const clipX = style.overflowX !== "visible";
-          const clipY = style.overflowY !== "visible";
-          if (!clipX && !clipY) continue;
-          const bounds = element.getBoundingClientRect();
-          const left = bounds.left + element.clientLeft;
-          const top = bounds.top + element.clientTop;
-          clips.push({
-            left: clipX ? left : -Infinity,
-            right: clipX ? left + element.clientWidth : Infinity,
-            top: clipY ? top : -Infinity,
-            bottom: clipY ? top + element.clientHeight : Infinity,
-          });
-        }
-        visible = lines.some((line) => isSelectionRectVisible(line, clips));
-      }
-      if (!visible) {
-        clear();
-        return;
-      }
-      const rects = captured.range.getClientRects();
-      const pointerOnText =
-        pointer !== null &&
-        Array.from(rects).some(
-          (line) =>
-            pointer.x >= line.left - 8 &&
-            pointer.x <= line.right + 8 &&
-            pointer.y >= line.top - 8 &&
-            pointer.y <= line.bottom + 8,
-        );
-      setSelection({
-        sourceAnchor: { source: captured.source, range: captured.range, viewport },
-        citation: {
-          version: 1,
-          ...threadRef,
-          messageId: MessageId.make(messageId),
-          ...captured.selector,
-        },
-        position: resolveSelectionActionPosition({
-          bounds: viewportRect,
-          selectionRect: rects.item(rects.length - 1) ?? rect,
-          pointer: pointerOnText ? pointer : null,
-          viewport: { width: window.innerWidth, height: window.innerHeight },
-        }),
-      });
-    };
     const actions = observeSelectionActions({
       element: viewport,
       getActionElement: () => toolbarRef.current,
       restoreAfterScroll: true,
-      onSelection: update,
-      onDismiss: clear,
+      onSelection: (pointer) => setSelection(readCitableSelection(viewport, threadRef, pointer)),
+      onDismiss: () => setSelection(null),
     });
     actionsRef.current = actions;
     const focusActions = (event: KeyboardEvent) => {
@@ -198,15 +194,18 @@ export function AssistantSelectionToolbar({
     setSelection(null);
   };
   // True whenever there was a selection to cite, even if the composer then declines it.
-  const cite = () => {
-    if (!selection || tooLong) return false;
-    if (onCite(selection.citation, selection.sourceAnchor)) {
+  const cite = (current: ToolbarSelection | null) => {
+    if (!current || current.citation.text.length > ASSISTANT_CITATION_MAX_TEXT_LENGTH) return false;
+    if (onCite(current.citation, current.sourceAnchor)) {
       window.getSelection()?.removeAllRanges();
       dismiss();
     }
     return true;
   };
-  useImperativeHandle(ref, () => ({ citeSelection: cite }));
+  // The shortcut reads the selection itself, so it need not wait for the button's delay.
+  useImperativeHandle(ref, () => ({
+    citeSelection: () => cite(viewport && readCitableSelection(viewport, threadRef, null)),
+  }));
 
   if (!selection) return null;
   return createPortal(
@@ -220,7 +219,7 @@ export function AssistantSelectionToolbar({
       className="fixed z-50 max-w-[calc(100vw-1rem)]"
       style={{ left: selection.position.x, top: selection.position.y }}
       onPointerDown={(event) => event.preventDefault()}
-      onClick={cite}
+      onClick={() => cite(selection)}
       onKeyDown={(event) => {
         event.stopPropagation();
         if (event.key === "Escape" && !event.nativeEvent.isComposing) {
