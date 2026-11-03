@@ -419,17 +419,17 @@ function ComposerCitationNodeView({ node, editor, getPos }: NodeViewProps) {
   };
 
   const removeOnCancel = commentTarget?.removeOnCancel;
-  const onRemove = () => {
-    if (!editor.isEditable || !removeOnCancel) return;
+  const onRemove = (): boolean => {
+    if (!editor.isEditable) return false;
     const pos = nodePos();
-    if (pos === null) return;
+    if (pos === null) return false;
     const { doc } = editor.state;
     const current = doc.nodeAt(pos);
-    if (!current) return;
+    if (!current || current.type.name !== "composer-citation") return false;
     const end = pos + current.nodeSize;
-    const from = removeOnCancel.before && doc.textBetween(pos - 1, pos) === " " ? pos - 1 : pos;
-    const to = removeOnCancel.after && doc.textBetween(end, end + 1) === " " ? end + 1 : end;
-    editor.chain().focus().deleteRange({ from, to }).run();
+    const from = removeOnCancel?.before && doc.textBetween(pos - 1, pos) === " " ? pos - 1 : pos;
+    const to = removeOnCancel?.after && doc.textBetween(end, end + 1) === " " ? end + 1 : end;
+    return editor.chain().focus().deleteRange({ from, to }).run();
   };
 
   const onRestoreFocus = () => {
@@ -476,7 +476,8 @@ function ComposerCitationNodeView({ node, editor, getPos }: NodeViewProps) {
             commentContext.onOpenChange(citeKey, open);
           },
           ...(removeOnCancel ? { onCancel: onRemove } : {}),
-          onSave: onSaveComment,
+          // A Cite saved without a comment is removed rather than kept empty.
+          onSave: (comment) => (comment.trim() === "" ? onRemove() : onSaveComment(comment)),
           onDraftChange: (comment) => commentContext.onDraftChange(citeKey, comment),
           onSaveAndSend: (comment) => {
             if (!onSaveComment(comment)) return false;
