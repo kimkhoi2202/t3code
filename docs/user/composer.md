@@ -65,7 +65,7 @@ See [images and videos](#images-and-videos-in-messages) for previewing and savin
 On web and desktop, choose **Settings → Chat → Follow-up behavior** to queue
 new messages for a later turn or steer the running turn immediately. The setting
 applies to this client; already queued messages keep their place. Queued messages
-are saved on the server and can be edited or removed before they send.
+are saved on the server and can be edited, reordered, or removed before they send.
 When Enter sends, `Cmd+Enter` on macOS or `Ctrl+Enter` on Windows and Linux uses
 the opposite action: it steers when your default is Queue and queues when your
 default is Steer.
@@ -241,12 +241,13 @@ shortcut described above.
 On web and desktop, queued messages appear at the end of the thread as dashed messages that have
 not been sent yet. On mobile they appear above the composer. Each shows its text and any attached
 images. **Send now** sends a message right away, into the running turn if there is one. You can
-also edit or remove it.
+also edit or remove it. On web and desktop, drag a message by its number to reorder the queue, or
+focus the number and press the arrow keys.
 
 If you stop the agent or the server restarts, queued messages keep their order and are held.
 Press **Resume** in an empty composer to continue. **Resume** also continues a stopped
 run or one that hit a usage limit, even with nothing queued. Sending a new message also resumes the queue, unless it steers a turn that is already
-running. You can edit or remove held messages without starting them.
+running. You can edit, reorder, or remove held messages without starting them.
 
 **Merge queued messages** turns the queue into one queued message without sending anything. Text,
 quotes, attachments, and context chips all carry over, in order, and the result takes the first

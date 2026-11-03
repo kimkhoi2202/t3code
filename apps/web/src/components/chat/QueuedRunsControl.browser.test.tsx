@@ -3,11 +3,12 @@ import { serializeAssistantCitation } from "@t3tools/shared/assistantCitations";
 import * as DateTime from "effect/DateTime";
 import type { ComponentProps } from "react";
 import { expect, it, vi } from "vite-plus/test";
-import { page } from "vite-plus/test/browser";
+import { page, userEvent } from "vite-plus/test/browser";
 
 const state = vi.hoisted(() => ({
   projection: null as unknown,
   workflow: null as unknown,
+  command: vi.fn(async (_request: unknown) => undefined),
 }));
 
 vi.mock(import("@t3tools/client-runtime/state/thread-workflows"), async (importOriginal) => ({
@@ -31,7 +32,7 @@ vi.mock(import("../../state/query"), async (importOriginal) => ({
 
 vi.mock(import("../../state/use-atom-command"), async (importOriginal) => ({
   ...(await importOriginal()),
-  useAtomCommand: (() => async () => undefined) as never,
+  useAtomCommand: (() => state.command) as never,
 }));
 
 vi.mock(import("../../assets/assetUrls"), async (importOriginal) => ({
@@ -47,6 +48,7 @@ import { QueuedRunsControl } from "./QueuedRunsControl";
 function setup() {
   state.projection = null;
   state.workflow = null;
+  state.command.mockClear();
 }
 
 const baseProps = {
@@ -238,4 +240,34 @@ it("stays inside the timeline scroller instead of growing the chat column", asyn
   await expect.element(page.getByText("Later", { exact: true })).toBeInTheDocument();
   const column = screen.getByTestId("column").element();
   expect(column.scrollHeight).toBe(column.clientHeight);
+});
+
+it("moves a queued message up or down with its grip's arrow keys", async () => {
+  setup();
+  state.projection = { projection: { messages: [] } };
+  state.workflow = {
+    activeRun: { id: "run:active" },
+    canReorder: true,
+    queuedRuns: ["first", "second", "third"].map((id) => ({
+      run: { id: `run:${id}`, userMessageId: `message:${id}` },
+      text: id,
+      attachments: [],
+    })),
+  };
+  await using _screen = await renderQueue();
+  const reorder = (runId: string, beforeRunId: string | null) => ({
+    environmentId: baseProps.environmentId,
+    input: { threadId: baseProps.threadId, runId, beforeRunId },
+  });
+
+  await page.getByRole("button", { name: /^Reorder queued message 2 of 3/ }).click();
+  await userEvent.keyboard("{ArrowUp}");
+  await vi.waitFor(() =>
+    expect(state.command).toHaveBeenLastCalledWith(reorder("run:second", "run:first")),
+  );
+
+  await userEvent.keyboard("{ArrowDown}");
+  await vi.waitFor(() =>
+    expect(state.command).toHaveBeenLastCalledWith(reorder("run:second", null)),
+  );
 });
