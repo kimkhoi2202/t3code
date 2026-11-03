@@ -18,12 +18,13 @@ import * as Option from "effect/Option";
 import { AsyncResult, type Atom, AtomRegistry } from "effect/reactivity";
 import { Profiler, useState, type ComponentProps } from "react";
 import { expect, it, vi } from "vite-plus/test";
-import { page } from "vite-plus/test/browser";
+import { page, userEvent } from "vite-plus/test/browser";
 
 const state = vi.hoisted(() => ({
   threadState: null as unknown as Atom.Writable<AsyncResult.AsyncResult<EnvironmentThreadState>>,
   workflow: null as unknown,
   commandResult: undefined as unknown,
+  command: vi.fn(async (_request: unknown) => undefined),
 }));
 
 vi.mock(import("@t3tools/client-runtime/state/thread-workflows"), async (importOriginal) => ({
@@ -74,7 +75,10 @@ vi.mock(import("../../state/threads"), async (importOriginal) => {
 
 vi.mock(import("../../state/use-atom-command"), async (importOriginal) => ({
   ...(await importOriginal()),
-  useAtomCommand: (() => async () => state.commandResult) as never,
+  useAtomCommand: (() => async (request: unknown) => {
+    await state.command(request);
+    return state.commandResult;
+  }) as never,
 }));
 
 vi.mock(import("../../assets/assetUrls"), async (importOriginal) => ({
@@ -96,6 +100,7 @@ import type { ExpandedImagePreview } from "./ExpandedImagePreview";
 function setup() {
   state.workflow = null;
   state.commandResult = undefined;
+  state.command.mockClear();
 }
 
 const baseProps = {
@@ -477,4 +482,33 @@ it("tells the user why Send now was rejected", async () => {
 
   await page.getByRole("button", { name: "Send now" }).click();
   await vi.waitFor(() => expect(page.getByText(reason).element()).toBeVisible());
+});
+
+it("moves a queued message up or down with its grip's arrow keys", async () => {
+  setup();
+  state.workflow = {
+    activeRun: { id: "run:active" },
+    canReorder: true,
+    queuedRuns: ["first", "second", "third"].map((id) => ({
+      run: { id: `run:${id}`, userMessageId: `message:${id}` },
+      text: id,
+      attachments: [],
+    })),
+  };
+  await using _screen = await renderQueue();
+  const reorder = (runId: string, beforeRunId: string | null) => ({
+    environmentId: baseProps.environmentId,
+    input: { threadId: baseProps.threadId, runId, beforeRunId },
+  });
+
+  await page.getByRole("button", { name: /^Reorder queued message 2 of 3/ }).click();
+  await userEvent.keyboard("{ArrowUp}");
+  await vi.waitFor(() =>
+    expect(state.command).toHaveBeenLastCalledWith(reorder("run:second", "run:first")),
+  );
+
+  await userEvent.keyboard("{ArrowDown}");
+  await vi.waitFor(() =>
+    expect(state.command).toHaveBeenLastCalledWith(reorder("run:second", null)),
+  );
 });

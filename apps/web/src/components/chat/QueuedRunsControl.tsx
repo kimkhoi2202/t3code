@@ -23,6 +23,7 @@ import {
   CalendarClockIcon,
   ChevronDownIcon,
   Clock3Icon,
+  GripVerticalIcon,
   MergeIcon,
   MessagesSquareIcon,
   PencilIcon,
@@ -57,6 +58,7 @@ export interface EditQueuedRunRequest {
   readonly attachments: ReadonlyArray<ContractChatAttachment>;
 }
 
+const QUEUED_RUN_DRAG_TYPE = "application/x-t3code-queued-run";
 // A longer queue shows its first messages and a button that shows the rest.
 const QUEUE_VISIBLE_ROWS = 3;
 
@@ -108,6 +110,7 @@ export function QueuedRunsControl({
   const projection = useQuietThreadProjection(
     scopeThreadRef(props.environmentId, props.threadId),
   )?.projection;
+  const reorder = useAtomCommand(threadEnvironment.reorderQueuedRun);
   const promote = useAtomCommand(threadEnvironment.promoteQueuedRun);
   const resume = useAtomCommand(threadEnvironment.resumeThreadQueue);
   const cancel = useAtomCommand(threadEnvironment.cancelQueuedRun);
@@ -116,6 +119,12 @@ export function QueuedRunsControl({
   const [showAll, setShowAll] = useState(false);
   const queueListId = useId();
   const [busyRunId, setBusyRunId] = useState<RunId | null>(null);
+  const [dragState, setDragState] = useState<{
+    readonly runId: RunId;
+    readonly insertIndex: number | null;
+  } | null>(null);
+  // Arm from the grip to prevent accidental text drags from reordering queued runs.
+  const dragArmedRunIdRef = useRef<RunId | null>(null);
   const steerInFlightRef = useRef(false);
   // Run-only acknowledgements can resurrect pending rows after cancellation or startup.
   const acknowledgedMessageIds = new Set((projection?.messages ?? []).map((message) => message.id));
@@ -132,6 +141,7 @@ export function QueuedRunsControl({
     workflow?.canSendNow === true ||
     (workflow?.canPromoteToSteer === true &&
       (!freshContext || workflow.promoteSkipsCompaction === true));
+  const canReorder = workflow?.canReorder === true;
   const queuedImageUrlById = new Map(
     queuedImageAttachmentUrls.flatMap((url, index) => {
       const resource = queuedImageAttachmentResources[index];
@@ -276,6 +286,25 @@ export function QueuedRunsControl({
     setBusyRunId(null);
   };
 
+  const move = async (runId: RunId, beforeRunId: RunId | null) => {
+    setBusyRunId(runId);
+    await reorder({
+      environmentId: props.environmentId,
+      input: { threadId: props.threadId, runId, beforeRunId },
+    });
+    setBusyRunId(null);
+  };
+
+  const completeDrag = (runId: RunId, insertIndex: number | null) => {
+    setDragState(null);
+    dragArmedRunIdRef.current = null;
+    if (insertIndex === null || busyRunId !== null) return;
+    const draggedIndex = queued.findIndex(({ run }) => run.id === runId);
+    if (draggedIndex === -1) return;
+    if (insertIndex === draggedIndex || insertIndex === draggedIndex + 1) return;
+    void move(runId, queued[insertIndex]?.run.id ?? null);
+  };
+
   const resumeAfterEdit = async (runId: RunId) => {
     setBusyRunId(runId);
     await setEditPause({
@@ -312,6 +341,10 @@ export function QueuedRunsControl({
                 replaceComposerContextReferences(item.text, (reference) => reference.label),
               ).trim();
           const isEditing = item.runId !== null && item.runId === props.editingRunId;
+          const rowRunId = item.runId;
+          const rowServerIndex = item.serverIndex;
+          const rowDraggable =
+            rowRunId !== null && rowServerIndex !== null && canReorder && busyRunId === null;
           return (
             <li
               key={item.key}
@@ -322,8 +355,56 @@ export function QueuedRunsControl({
               aria-posinset={position + 1}
               aria-setsize={items.length}
               aria-current={isEditing ? "true" : undefined}
-              className="group/queued flex w-full flex-col items-end gap-1"
+              className={cn(
+                "group/queued relative flex w-full flex-col items-end gap-1",
+                dragState !== null && dragState.runId === item.runId && "opacity-50",
+              )}
+              draggable={rowDraggable}
+              onDragStart={(event) => {
+                if (item.runId === null || dragArmedRunIdRef.current !== item.runId) {
+                  event.preventDefault();
+                  return;
+                }
+                event.dataTransfer.setData(QUEUED_RUN_DRAG_TYPE, item.runId);
+                event.dataTransfer.effectAllowed = "move";
+                setDragState({ runId: item.runId, insertIndex: null });
+              }}
+              onDragEnd={() => {
+                dragArmedRunIdRef.current = null;
+                setDragState(null);
+              }}
+              onDragOver={(event) => {
+                if (dragState === null || item.serverIndex === null) return;
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
+                const rect = event.currentTarget.getBoundingClientRect();
+                const insertIndex =
+                  event.clientY < rect.top + rect.height / 2
+                    ? item.serverIndex
+                    : item.serverIndex + 1;
+                if (dragState.insertIndex !== insertIndex) {
+                  setDragState({ runId: dragState.runId, insertIndex });
+                }
+              }}
+              onDrop={(event) => {
+                if (dragState === null) return;
+                event.preventDefault();
+                completeDrag(dragState.runId, dragState.insertIndex);
+              }}
             >
+              {item.serverIndex !== null && dragState?.insertIndex === item.serverIndex ? (
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-0 -top-1.5 h-0.5 rounded bg-primary/70"
+                />
+              ) : null}
+              {item.serverIndex === queued.length - 1 &&
+              dragState?.insertIndex === queued.length ? (
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-0 -bottom-1.5 h-0.5 rounded bg-primary/70"
+                />
+              ) : null}
               <QueuedMessage
                 environmentId={props.environmentId}
                 message={item.message}
@@ -334,6 +415,42 @@ export function QueuedRunsControl({
                 onOpenThread={props.onOpenThread}
                 onImageExpand={props.onImageExpand}
               >
+                {items.length > 1 && canReorder && rowRunId !== null && rowServerIndex !== null ? (
+                  <Button
+                    size="icon-xs"
+                    variant="ghost-muted"
+                    aria-label={gt(
+                      "Reorder queued message {position} of {count} (drag, or press the arrow keys)",
+                      { position: position + 1, count: items.length },
+                    )}
+                    className="group/grip cursor-grab active:cursor-grabbing"
+                    // Not `disabled`: that drops keyboard focus mid-move and breaks repeated arrow presses.
+                    aria-disabled={busyRunId !== null || undefined}
+                    onPointerDown={() => {
+                      if (busyRunId === null) dragArmedRunIdRef.current = rowRunId;
+                    }}
+                    onKeyDown={(event) => {
+                      if (busyRunId !== null) return;
+                      if (event.key === "ArrowUp" && rowServerIndex > 0) {
+                        event.preventDefault();
+                        void move(rowRunId, queued[rowServerIndex - 1]?.run.id ?? null);
+                      }
+                      if (event.key === "ArrowDown" && rowServerIndex < queued.length - 1) {
+                        event.preventDefault();
+                        // Moving into the collapsed rows would unmount the focused grip.
+                        if (rowServerIndex + 1 >= visibleItems.length) setShowAll(true);
+                        void move(rowRunId, queued[rowServerIndex + 2]?.run.id ?? null);
+                      }
+                    }}
+                  >
+                    <span className="text-xs font-medium tabular-nums group-hover/queued:hidden group-focus-visible/grip:hidden">
+                      {position + 1}
+                    </span>
+                    <GripVerticalIcon className="hidden group-hover/queued:block group-focus-visible/grip:block" />
+                  </Button>
+                ) : items.length > 1 ? (
+                  <span className="px-1.5 font-medium tabular-nums">{position + 1}</span>
+                ) : null}
                 {canSendRun(item.freshContext) && !isEditing ? (
                   <>
                     <Tooltip>

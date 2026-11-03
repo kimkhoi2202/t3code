@@ -85,7 +85,7 @@ describe("thread workflows", () => {
     expect(threadSupportsProviderHandoff({ ...projection, providerThreads: [] })).toBe(false);
   });
 
-  it("sorts queued messages and gates promotion from capabilities", () => {
+  it("sorts queued messages and gates reorder and promotion from capabilities", () => {
     const state = deriveThreadQueueWorkflowState({
       thread: { id: "thread", activeProviderThreadId: "provider-thread" },
       runs: [
@@ -153,6 +153,7 @@ describe("thread workflows", () => {
       [],
     ]);
     expect(state.activeRun?.id).toBe("active");
+    expect(state.canReorder).toBe(true);
     expect(state.canPromoteToSteer).toBe(true);
     expect(state.canSendNow).toBe(false);
   });
