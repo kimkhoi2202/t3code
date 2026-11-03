@@ -16,6 +16,7 @@ import {
   TurnItemId,
   ScheduledTaskId,
   ThreadId,
+  type AssistantCitation,
   type OrchestrationV2Subagent,
 } from "@t3tools/contracts";
 import { LegendList, type LegendListRef } from "@legendapp/list/react";
@@ -1235,8 +1236,9 @@ const CITATION_REQUEST = {
 } satisfies NonNullable<TimelineProps["citationRequest"]>;
 
 describe("MessagesTimeline citations", () => {
-  it("offers Cite for text an agent sent with send_to_user", async () => {
+  it("cites text an agent sent with send_to_user", async () => {
     const text = "The draft the next question refers to";
+    const onCite = vi.fn((_citation: AssistantCitation) => true);
     await using screen = await renderTimeline(
       [
         {
@@ -1247,13 +1249,13 @@ describe("MessagesTimeline citations", () => {
           text,
         },
       ],
-      { onCiteAssistantText: () => true },
+      { onCiteAssistantText: onCite },
     );
     await expect.element(screen.getByText(text)).toHaveStyle({ pointerEvents: "auto" });
+    // A triple-click cites the paragraph at once.
     await userEvent.tripleClick(screen.getByText(text));
-    await expect
-      .element(page.getByRole("button", { name: "Cite selection in composer" }))
-      .toBeVisible();
+    await vi.waitFor(() => expect(onCite).toHaveBeenCalledTimes(1));
+    expect(onCite.mock.calls[0]![0].text).toBe(text);
   });
 
   it("lands a citation present at mount under StrictMode", async () => {
