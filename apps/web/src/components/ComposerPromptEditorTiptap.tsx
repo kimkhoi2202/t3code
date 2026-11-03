@@ -488,19 +488,19 @@ function ComposerCitationNodeView({ node, editor, getPos }: NodeViewProps) {
   };
 
   const removeOnCancel = commentTarget?.removeOnCancel;
-  const onRemove = () => {
-    if (!removeOnCancel) return;
+  const onRemove = (): boolean => {
+    // A read-only composer (dictation) can still receive a new citation, so Cancel must undo it.
+    if (!editor.isEditable && !removeOnCancel) return false;
     const pos = nodePos();
-    if (pos === null) return;
+    if (pos === null) return false;
     const { doc } = editor.state;
     const current = doc.nodeAt(pos);
-    if (!current) return;
+    if (!current || current.type.name !== "composer-citation") return false;
     const end = pos + current.nodeSize;
-    const from = removeOnCancel.before && doc.textBetween(pos - 1, pos) === " " ? pos - 1 : pos;
-    const to = removeOnCancel.after && doc.textBetween(end, end + 1) === " " ? end + 1 : end;
-    // A read-only composer (dictation) can still receive a new citation, so Cancel must undo it.
+    const from = removeOnCancel?.before && doc.textBetween(pos - 1, pos) === " " ? pos - 1 : pos;
+    const to = removeOnCancel?.after && doc.textBetween(end, end + 1) === " " ? end + 1 : end;
     const chain = editor.chain();
-    (editor.isEditable ? chain.focus() : chain).deleteRange({ from, to }).run();
+    return (editor.isEditable ? chain.focus() : chain).deleteRange({ from, to }).run();
   };
 
   const sentRef = useRef(false);
@@ -556,7 +556,8 @@ function ComposerCitationNodeView({ node, editor, getPos }: NodeViewProps) {
             commentContext.onOpenChange(citeKey, open);
           },
           ...(removeOnCancel ? { onCancel: onRemove } : {}),
-          onSave: onSaveComment,
+          // A Cite saved without a comment is removed rather than kept empty.
+          onSave: (comment) => (comment.trim() === "" ? onRemove() : onSaveComment(comment)),
           onDraftChange: (comment) => commentContext.onDraftChange(citeKey, comment),
           onSaveAndSend: (comment) => {
             if (!onSaveComment(comment)) return false;
