@@ -252,7 +252,7 @@ export const MarkdownFileLink = memo(function MarkdownFileLink({
           ...(onOpenMedia ? ([{ id: "preview-media", label: "Preview media" }] as const) : []),
           ...(onOpen ? ([{ id: "open", label: openInEditorMenuLabel }] as const) : []),
           ...(onOpenInDefaultApp
-            ? ([{ id: "open-default-app", label: "Open in default app" }] as const)
+            ? ([{ id: "open-default-app", label: "Open in system app" }] as const)
             : []),
           ...(onOpenInBrowser
             ? ([{ id: "open-in-browser", label: "Open in integrated browser" }] as const)
