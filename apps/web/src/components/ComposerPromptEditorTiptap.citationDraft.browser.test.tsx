@@ -98,7 +98,15 @@ it("keeps an unsaved citation comment when a question takes the composer", async
   await expect.element(page.getByLabelText("Edit citation comment")).toBeInTheDocument();
 });
 
-it("removes a new Cite saved without a comment", async () => {
+it.each([
+  { closedBy: "Save", close: () => page.getByRole("button", { name: "Save" }).click() },
+  { closedBy: "Escape", close: () => userEvent.keyboard("{Escape}") },
+  { closedBy: "clicking away", close: () => page.getByText("hello world").click() },
+  {
+    closedBy: "Ctrl+Enter to send",
+    close: () => userEvent.keyboard("{Control>}{Enter}{/Control}"),
+  },
+])("removes a new Cite closed by $closedBy without a comment", async ({ close }) => {
   const editorRef = createRef<ComposerPromptEditorHandle>();
   await using screen = await render(<Composer question={false} editorRef={editorRef} />);
   const sourceAnchor = findAssistantCitationSourceAnchor(document, citation);
@@ -112,8 +120,9 @@ it("removes a new Cite saved without a comment", async () => {
       insertedSpaces: { before: false, after: true },
     }),
   );
+  await expect.element(page.getByLabelText("Comment on selected text")).toHaveFocus();
 
-  await page.getByRole("button", { name: "Save" }).click();
+  await close();
 
   await vi.waitFor(() =>
     expect(screen.container.querySelector("output")?.dataset.prompt).toBe("See "),
