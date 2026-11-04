@@ -128,7 +128,24 @@ function ThreadSwitcherPopup(props: {
   return (
     <CommandDialogPopup aria-label="Switch thread" className="max-w-md">
       <Command mode="none">
-        <CommandPanel ref={panelRef} className="flex max-h-[min(28rem,70vh)] min-h-0 flex-col">
+        <CommandPanel
+          ref={panelRef}
+          className="flex max-h-[min(28rem,70vh)] min-h-0 flex-col"
+          onContextMenu={(event) => {
+            // The chord holds Control, and macOS turns Control+click into a right-click with no click.
+            if (!event.ctrlKey) return;
+            event.preventDefault();
+            const rows = [
+              ...(panelRef.current?.querySelectorAll("[data-slot=command-item]") ?? []),
+            ];
+            const { target } = event;
+            const item =
+              items[rows.findIndex((row) => target instanceof Node && row.contains(target))];
+            if (!item) return;
+            onClose();
+            void item.run();
+          }}
+        >
           <CommandPaletteResults
             groups={items.length > 0 ? [{ value: "recent-threads", label: "Recent", items }] : []}
             highlightedItemValue={items[index]?.value ?? null}
