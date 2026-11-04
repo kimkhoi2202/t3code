@@ -121,6 +121,39 @@ function readCitableSelection(
   };
 }
 
+/**
+ * Chromium's triple-click stops at an inline-flex chip, such as a thread link, so it selects only
+ * the text on one side of it. Selects the clicked paragraph whole when it holds a chip.
+ */
+function selectParagraphAcrossChips(target: EventTarget | null, viewport: HTMLElement): void {
+  let block =
+    target instanceof Element ? target : target instanceof Node ? target.parentElement : null;
+  while (block && block !== viewport && getComputedStyle(block).display.startsWith("inline")) {
+    block = block.parentElement;
+  }
+  if (!block || block === viewport || !viewport.contains(block)) return;
+  let hasChip = false;
+  const nestedBlock = document
+    .createTreeWalker(block, NodeFilter.SHOW_ELEMENT, {
+      acceptNode: (node) => {
+        const display = getComputedStyle(node as Element).display;
+        if (display === "inline" || display === "contents") return NodeFilter.FILTER_SKIP;
+        if (display === "inline-flex") hasChip = true;
+        return display.startsWith("inline") || display === "none"
+          ? NodeFilter.FILTER_REJECT
+          : NodeFilter.FILTER_ACCEPT;
+      },
+    })
+    .nextNode();
+  // A paragraph with blocks of its own (a list item's sublist) keeps the browser's selection.
+  if (nestedBlock !== null || !hasChip) return;
+  const range = document.createRange();
+  range.selectNodeContents(block);
+  const selection = window.getSelection();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+}
+
 export function AssistantSelectionToolbar({
   ref,
   viewport,
@@ -153,6 +186,7 @@ export function AssistantSelectionToolbar({
   // A triple-click selects a paragraph and cites it at once, without waiting for the button.
   const citeTripleClick = useEffectEvent((event: MouseEvent) => {
     if (viewport && event.button === 0 && event.detail === 3) {
+      selectParagraphAcrossChips(event.target, viewport);
       cite(readCitableSelection(viewport, threadRef, null));
     }
   });
