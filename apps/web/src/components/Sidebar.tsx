@@ -270,6 +270,7 @@ import {
   SidebarProjectFolderHeader,
   sidebarFolderRowId,
 } from "./sidebar/SidebarProjectFolderHeader";
+import { ProjectSettledThreadsDialog } from "./sidebar/ProjectSettledThreadsDialog";
 import {
   SidebarDragBoundary,
   SidebarSectionHeader,
@@ -1254,6 +1255,9 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     if (isMobile) setOpenMobile(false);
     void handleNewThread(scopeProjectRef(group.environmentId, group.id));
   });
+  const [settledThreadsGroup, setSettledThreadsGroup] = useState<SidebarProjectSnapshot | null>(
+    null,
+  );
   const handleProjectFolderContextMenu = useStableCallback(
     (group: SidebarProjectSnapshot, position: { x: number; y: number }) => {
       const api = readLocalApi();
@@ -1271,6 +1275,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
           api.contextMenu.show(
             [
               { id: "new-thread", label: "New thread" },
+              { id: "settled-threads", label: "Show settled threads", icon: "circle-check" },
               { id: "copy-path", label: "Copy path" },
               ...(revealLabel === undefined
                 ? []
@@ -1291,6 +1296,9 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
         switch (clicked.value) {
           case "new-thread":
             startThreadInProjectFolder(group);
+            return;
+          case "settled-threads":
+            setSettledThreadsGroup(group);
             return;
           case "copy-path":
             copyPathToClipboard(group.workspaceRoot, { path: group.workspaceRoot });
@@ -3702,6 +3710,17 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
         </SidebarGroup>
       </SidebarContent>
       <SidebarChromeFooter />
+      {settledThreadsGroup ? (
+        <ProjectSettledThreadsDialog
+          key={settledThreadsGroup.projectKey}
+          group={settledThreadsGroup}
+          onClose={() => setSettledThreadsGroup(null)}
+          onOpenThread={(threadRef) => {
+            setSettledThreadsGroup(null);
+            void navigateToThread(threadRef);
+          }}
+        />
+      ) : null}
     </>
   );
 }

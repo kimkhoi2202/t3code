@@ -157,9 +157,11 @@ project's folder comes last and shows only while it has active threads. Click a 
 close it. A closed folder shows how many threads it holds, and a dot when one of them
 needs you. Use the pen button on a folder, or right-click it, to start a thread in that project.
 Its right-click menu can also copy the project path or, when the project is on this computer,
-reveal it in Finder or File Explorer. Pinned threads stay above the folders, and Snoozed and
-Settled stay below them. In this mode you cannot drag threads, and the Working section is off.
-Each device keeps its own choice.
+reveal it in Finder or File Explorer. **Show settled threads** lists every settled thread in the
+project, most recently settled first. Click one to open it, or press **Un-settle** to move it back
+to active work. Right-click one to archive or delete it. Pinned threads stay above the folders,
+and Snoozed and Settled stay below them. In this mode you cannot drag threads, and the Working
+section is off. Each device keeps its own choice.
 
 ## Settle finished work
 
