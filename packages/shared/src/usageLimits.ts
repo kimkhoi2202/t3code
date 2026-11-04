@@ -480,18 +480,20 @@ export function collectLimitPools(
     else byDriver.set(account.driver, [account]);
   }
   return [...byDriver].map(([driver, members]) => {
-    const orderWindow = members
-      .flatMap((account) => account.limits.windows)
-      .sort((left, right) => WINDOW_KIND_ORDER[left.kind] - WINDOW_KIND_ORDER[right.kind])[0];
-    const orderReset = (account: LimitAccount) => {
-      const window = account.limits.windows.find(
-        (window) => orderWindow && poolKey(driver, window) === poolKey(driver, orderWindow),
+    const resetOf = (account: LimitAccount, kind: ServerProviderUsageWindow["kind"]) =>
+      Math.min(
+        ...account.limits.windows
+          .filter((window) => window.kind === kind)
+          .map((window) => resetMillis(poolMember(account, window, now).window) ?? Infinity),
       );
-      return (
-        (window ? resetMillis(poolMember(account, window, now).window) : null) ??
-        Number.POSITIVE_INFINITY
-      );
-    };
+    // Order by the window kind most accounts have a reset clock for, so one ticking session
+    // cannot reorder columns; ties go to the shorter window.
+    const clocked = (kind: ServerProviderUsageWindow["kind"]) =>
+      members.filter((account) => resetOf(account, kind) !== Infinity).length;
+    const orderKind = (
+      Object.keys(WINDOW_KIND_ORDER) as ServerProviderUsageWindow["kind"][]
+    ).reduce((best, kind) => (clocked(kind) > clocked(best) ? kind : best));
+    const orderReset = (account: LimitAccount) => resetOf(account, orderKind);
     const sorted = [...members].sort(
       (left, right) =>
         orderReset(left) - orderReset(right) ||

@@ -1061,15 +1061,20 @@ describe("pooled account columns", () => {
     expect(pool!.windows[1]!.resets.map((reset) => reset.restoresPercent)).toEqual([40, 20]);
   });
 
-  it("falls back to weekly resets when no account reports a session", () => {
+  it.each([
+    ["no account reports a session", []],
+    ["one account's session has a reset clock", [window]],
+    ["one account's session has no reset clock", [{ ...window, resetsAt: undefined }]],
+  ] as const)("orders by weekly resets when %s", (_case, sessions) => {
     const [pool] = collectLimitPools(
       [
-        account("a", [{ ...weekly, resetsAt: "2026-09-06T12:00:00.000Z" }]),
+        account("a", [...sessions, { ...weekly, resetsAt: "2026-09-06T12:00:00.000Z" }]),
         account("b", [{ ...weekly, resetsAt: "2026-09-05T12:00:00.000Z" }]),
+        account("c", [{ ...weekly, resetsAt: "2026-09-04T12:00:00.000Z" }]),
       ],
       now,
     );
-    expect(keys(pool!)).toEqual([["b", "a"]]);
+    expect(pool!.accounts.map((account) => account.key)).toEqual(["c", "b", "a"]);
   });
 });
 
