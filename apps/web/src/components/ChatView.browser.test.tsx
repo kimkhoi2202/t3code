@@ -241,6 +241,12 @@ it("opens a linked Linear issue from an inactive thread's sidebar badge", async 
   expect(router.history.location.pathname).toBe(`/${ENVIRONMENT_ID}/${linked.id}`);
   await expect.element(page.getByRole("heading", { name: liveTitle })).toBeVisible();
   await act(() => useRightPanelStore.getState().close(scopeThreadRef(ENVIRONMENT_ID, linked.id)));
+  // This fork starts Thread details closed.
+  await act(() =>
+    useRightPanelStore
+      .getState()
+      .setThreadPanelOpen(scopeThreadRef(ENVIRONMENT_ID, linked.id), "inline", true),
+  );
   await expect
     .element(
       page.getByRole("region", { name: "Thread details" }).getByRole("link", {
