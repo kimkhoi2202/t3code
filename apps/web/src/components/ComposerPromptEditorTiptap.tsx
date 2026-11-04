@@ -487,15 +487,26 @@ function ComposerCitationNodeView({ node, editor, getPos }: NodeViewProps) {
     return true;
   };
 
+  const savedComment = () => {
+    const pos = nodePos();
+    const current = pos === null ? null : editor.state.doc.nodeAt(pos);
+    return current?.type.name === "composer-citation" && current.attrs.citeKey === citeKey
+      ? ((current.attrs.citation as AssistantCitation).comment ?? "").trim()
+      : "";
+  };
+
   const removeOnCancel = commentTarget?.removeOnCancel;
-  const onRemove = (): boolean => {
+  const onRemove = (cancelled = false): boolean => {
     // A read-only composer (dictation) can still receive a new citation, so Cancel must undo it.
-    if (!editor.isEditable && !removeOnCancel) return false;
+    if (!editor.isEditable && !cancelled) return false;
     const pos = nodePos();
     if (pos === null) return false;
     const { doc } = editor.state;
     const current = doc.nodeAt(pos);
-    if (!current || current.type.name !== "composer-citation") return false;
+    // A removed node view can report the position its neighbor now holds.
+    if (current?.type.name !== "composer-citation" || current.attrs.citeKey !== citeKey) {
+      return false;
+    }
     const end = pos + current.nodeSize;
     const from = removeOnCancel?.before && doc.textBetween(pos - 1, pos) === " " ? pos - 1 : pos;
     const to = removeOnCancel?.after && doc.textBetween(end, end + 1) === " " ? end + 1 : end;
@@ -553,14 +564,15 @@ function ComposerCitationNodeView({ node, editor, getPos }: NodeViewProps) {
           sourceAnchor: commentTarget?.sourceAnchor,
           onOpenChange: (open) => {
             if (open && !editor.isEditable) return;
+            // However its comment box closes, a Cite left without a comment is removed.
+            if (!open && !savedComment()) onRemove();
             commentContext.onOpenChange(citeKey, open);
           },
-          ...(removeOnCancel ? { onCancel: onRemove } : {}),
-          // A Cite saved without a comment is removed rather than kept empty.
+          ...(removeOnCancel ? { onCancel: () => onRemove(true) } : {}),
           onSave: (comment) => (comment.trim() === "" ? onRemove() : onSaveComment(comment)),
           onDraftChange: (comment) => commentContext.onDraftChange(citeKey, comment),
           onSaveAndSend: (comment) => {
-            if (!onSaveComment(comment)) return false;
+            if (!(comment.trim() === "" ? onRemove() : onSaveComment(comment))) return false;
             sentRef.current = commentContext.onSubmitAndSend();
             return true;
           },
