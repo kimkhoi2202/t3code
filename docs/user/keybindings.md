@@ -171,10 +171,10 @@ Streamed browser tabs and T3 Code in a web browser do not support it.
 
 In the desktop app, hold `Ctrl` and press `Tab` to list your recent threads, most recent first.
 Keep holding `Ctrl` and press `Tab` to move down or `Shift+Tab` to move up, then release `Ctrl` to
-open the highlighted thread. Escape keeps you where you are. The keys are the same on macOS,
-Windows, and Linux. Browsers keep `Ctrl+Tab` for their own tabs, so on the web bind
-**Thread Switcher: Next Recent Thread** and **Thread Switcher: Previous Recent Thread** to other
-keys in Settings → Keybindings.
+open the highlighted thread, or click any thread in the list while still holding `Ctrl`. Escape
+keeps you where you are. The keys are the same on macOS, Windows, and Linux. Browsers keep
+`Ctrl+Tab` for their own tabs, so on the web bind **Thread Switcher: Next Recent Thread** and
+**Thread Switcher: Previous Recent Thread** to other keys in Settings → Keybindings.
 
 ## Thread menu actions
 
