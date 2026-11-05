@@ -484,7 +484,7 @@ it("tells the user why Send now was rejected", async () => {
   await vi.waitFor(() => expect(page.getByText(reason).element()).toBeVisible());
 });
 
-it("moves a queued message up or down with its grip's arrow keys", async () => {
+it("moves a queued message with its grip's arrow keys or by dragging it onto another", async () => {
   setup();
   state.workflow = {
     activeRun: { id: "run:active" },
@@ -510,5 +510,14 @@ it("moves a queued message up or down with its grip's arrow keys", async () => {
   await userEvent.keyboard("{ArrowDown}");
   await vi.waitFor(() =>
     expect(state.command).toHaveBeenLastCalledWith(reorder("run:second", null)),
+  );
+
+  // Like the sidebar, the message itself drags onto another message's spot.
+  await userEvent.dragAndDrop(
+    page.getByText("second", { exact: true }),
+    page.getByText("first", { exact: true }),
+  );
+  await vi.waitFor(() =>
+    expect(state.command).toHaveBeenLastCalledWith(reorder("run:second", "run:first")),
   );
 });
