@@ -966,6 +966,21 @@ export function groupSidebarThreadsByProject<
   return folders.filter((folder) => folder.threads.length > 0 || keepEmpty(folder.group));
 }
 
+/**
+ * The rows a folder shows until Show more: its first `count` threads, plus the
+ * open thread when it sits further down, so the open row never disappears.
+ */
+export function previewSidebarFolderThreads<T>(
+  threads: readonly T[],
+  count: number,
+  isOpen: (thread: T) => boolean,
+): readonly T[] {
+  if (threads.length <= count) return threads;
+  const preview = threads.slice(0, count);
+  const open = threads.slice(count).find(isOpen);
+  return open === undefined ? preview : [...preview, open];
+}
+
 export type SidebarV2TopStatusKind =
   | "approval"
   | "done"

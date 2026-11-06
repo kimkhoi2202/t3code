@@ -1,6 +1,6 @@
 import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/models";
 import { scopedThreadKey, scopeThreadRef } from "@t3tools/client-runtime/environment";
-import { ChevronDownIcon, SquarePenIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronUpIcon, SquarePenIcon } from "lucide-react";
 import { memo } from "react";
 
 import { cn } from "~/lib/utils";
@@ -32,8 +32,8 @@ export function sidebarFolderRowId(projectKey: string) {
 
 /**
  * A project folder in the boring sidebar. It reads like a shelf header: a trailing
- * count and chevron, with the count and a status dot only while it is closed, so a
- * closed folder still says when a hidden thread needs you.
+ * count while it is closed and a chevron. Its status dot covers the threads it hides,
+ * closed or behind Show more, so a hidden thread that needs you still shows.
  */
 export const SidebarProjectFolderHeader = memo(function SidebarProjectFolderHeader(props: {
   group: SidebarProjectSnapshot;
@@ -46,19 +46,20 @@ export const SidebarProjectFolderHeader = memo(function SidebarProjectFolderHead
   const { group, collapsed, hiddenThreads } = props;
   const rowId = sidebarFolderRowId(group.projectKey);
   const localLastVisitedAtById = useUiStateStore((state) => state.threadLastVisitedAtById);
-  const dot = collapsed
-    ? resolveSidebarFolderDot(
-        hiddenThreads.map((thread) => ({
-          ...thread,
-          lastVisitedAt: resolveThreadLastVisitedAt(
-            thread.lastVisitedAt,
-            localLastVisitedAtById[
-              scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id))
-            ],
-          ),
-        })),
-      )
-    : null;
+  const dot =
+    hiddenThreads.length > 0
+      ? resolveSidebarFolderDot(
+          hiddenThreads.map((thread) => ({
+            ...thread,
+            lastVisitedAt: resolveThreadLastVisitedAt(
+              thread.lastVisitedAt,
+              localLastVisitedAtById[
+                scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id))
+              ],
+            ),
+          })),
+        )
+      : null;
   return (
     <li
       data-testid="sidebar-project-folder"
@@ -116,6 +117,35 @@ export const SidebarProjectFolderHeader = memo(function SidebarProjectFolderHead
           <TooltipPopup>New thread in {group.displayName}</TooltipPopup>
         </Tooltip>
       </span>
+    </li>
+  );
+});
+
+/** Reveals the threads past a folder's first few, and folds them back. */
+export const SidebarFolderShowMoreRow = memo(function SidebarFolderShowMoreRow(props: {
+  group: SidebarProjectSnapshot;
+  hiddenCount: number;
+  onToggle: (group: SidebarProjectSnapshot) => void;
+}) {
+  const { group, hiddenCount } = props;
+  const Icon = hiddenCount > 0 ? ChevronDownIcon : ChevronUpIcon;
+  return (
+    <li className="list-none">
+      <button
+        type="button"
+        data-sidebar-row={`folder-more:${group.projectKey}`}
+        data-sidebar-parent={sidebarFolderRowId(group.projectKey)}
+        aria-label={
+          hiddenCount > 0
+            ? `Show ${hiddenCount} more in ${group.displayName}`
+            : `Show fewer in ${group.displayName}`
+        }
+        onClick={() => props.onToggle(group)}
+        className="flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-(--control-radius) px-(--sidebar-row-content-inset) text-left text-sm text-sidebar-muted-foreground outline-none hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+      >
+        <Icon aria-hidden className="size-4 shrink-0" />
+        {hiddenCount > 0 ? `Show ${hiddenCount} more` : "Show less"}
+      </button>
     </li>
   );
 });

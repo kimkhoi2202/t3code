@@ -32,6 +32,7 @@ import {
   type SidebarSection,
   resolveSidebarDropVerb,
   groupSidebarThreadsByProject,
+  previewSidebarFolderThreads,
   resolveSidebarFolderDot,
   sidebarFolderExpansionKeys,
 } from "./Sidebar.logic";
@@ -1524,6 +1525,24 @@ describe("sidebarFolderExpansionKeys", () => {
     expect(resolveProjectExpanded({}, keys)).toBe(true);
     expect(resolveProjectExpanded({ [cwdKey]: false }, keys)).toBe(false);
     expect(resolveProjectExpanded({ [keys[0]!]: true, [cwdKey]: false }, keys)).toBe(true);
+  });
+});
+
+describe("previewSidebarFolderThreads", () => {
+  it("keeps the first threads and adds the open thread when it sits further down", () => {
+    const threads = ["a", "b", "c", "d", "e"];
+    expect(previewSidebarFolderThreads(threads, 3, (thread) => thread === "e")).toEqual([
+      "a",
+      "b",
+      "c",
+      "e",
+    ]);
+    expect(previewSidebarFolderThreads(threads, 3, (thread) => thread === "b")).toEqual([
+      "a",
+      "b",
+      "c",
+    ]);
+    expect(previewSidebarFolderThreads(threads.slice(0, 2), 3, () => false)).toEqual(["a", "b"]);
   });
 });
 

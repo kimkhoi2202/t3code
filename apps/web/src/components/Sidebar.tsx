@@ -184,6 +184,7 @@ import {
   applySidebarThreadDrop,
   filterSidebarV2VisibleThreads,
   groupSidebarThreadsByProject,
+  previewSidebarFolderThreads,
   sidebarFolderExpansionKeys,
   buildBulkTitleRegenerationContextMenuItem,
   buildBulkUnpinContextMenuItem,
@@ -267,6 +268,7 @@ import {
 } from "./sidebar/SidebarThreadRow";
 import { SidebarDraftBlock } from "./sidebar/SidebarDraftBlock";
 import {
+  SidebarFolderShowMoreRow,
   SidebarProjectFolderHeader,
   sidebarFolderRowId,
 } from "./sidebar/SidebarProjectFolderHeader";
@@ -329,6 +331,7 @@ const sidebarProviderEntriesAtom = Atom.make((get) => {
 const EMPTY_PROVIDER_ENTRIES: ReadonlyMap<string, SidebarProviderEntry> = new Map();
 const EMPTY_THREADS: readonly EnvironmentThreadShell[] = [];
 
+const FOLDER_PREVIEW_COUNT = 3;
 const SETTLED_TAIL_INITIAL_COUNT = 10;
 const SETTLED_TAIL_PAGE_COUNT = 25;
 const SETTLED_SHELF_EXPANDED_KEY = "t3code:sidebar:settled-expanded";
@@ -469,6 +472,7 @@ function useSidebarThreads(input: {
   // Shared with the old per-project sidebar, so folders keep their open state.
   const projectExpandedById = useUiStateStore((store) => store.projectExpandedById);
   const setProjectExpanded = useUiStateStore((store) => store.setProjectExpanded);
+  const [fullFolderKeys, setFullFolderKeys] = useState<ReadonlySet<string>>(() => new Set());
   const [settledTail, setSettledTail] = useState({
     scopeKey: projectScopeKey,
     count: SETTLED_TAIL_INITIAL_COUNT,
@@ -533,16 +537,26 @@ function useSidebarThreads(input: {
             projectExpandedById,
             sidebarFolderExpansionKeys(folder.group),
           );
+          const showAll = fullFolderKeys.has(folder.group.projectKey);
+          // A closed folder still shows the open thread, and hints at the rest.
+          const threads = collapsed
+            ? routeThreadOnly(folder.threads, routeRowThreadKey)
+            : showAll
+              ? folder.threads
+              : previewSidebarFolderThreads(
+                  folder.threads,
+                  FOLDER_PREVIEW_COUNT,
+                  (thread) => threadShellKey(thread) === routeRowThreadKey,
+                );
           return {
             group: folder.group,
             collapsed,
-            // A closed folder still shows the open thread, and hints at the rest.
-            threads: collapsed
-              ? routeThreadOnly(folder.threads, routeRowThreadKey)
-              : folder.threads,
-            hiddenThreads: collapsed
-              ? folder.threads.filter((thread) => threadShellKey(thread) !== routeRowThreadKey)
-              : EMPTY_THREADS,
+            threads,
+            hiddenThreads:
+              threads.length === folder.threads.length
+                ? EMPTY_THREADS
+                : folder.threads.filter((thread) => !threads.includes(thread)),
+            canShowLess: !collapsed && showAll && folder.threads.length > FOLDER_PREVIEW_COUNT,
           };
         });
   const orderedThreads = [
@@ -591,6 +605,12 @@ function useSidebarThreads(input: {
     workingShelfExpanded,
     toggleWorkingShelf: () => setWorkingShelfExpanded((value) => !value),
     projectFolders,
+    toggleFolderShowAll: (group: SidebarProjectSnapshot) =>
+      setFullFolderKeys((current) => {
+        const next = new Set(current);
+        if (!next.delete(group.projectKey)) next.add(group.projectKey);
+        return next;
+      }),
     toggleProjectFolder: (group: SidebarProjectSnapshot) => {
       const keys = sidebarFolderExpansionKeys(group);
       setProjectExpanded(keys, !resolveProjectExpanded(projectExpandedById, keys));
@@ -1359,6 +1379,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     toggleWorkingShelf,
     projectFolders,
     toggleProjectFolder,
+    toggleFolderShowAll,
     renderedSettledThreads,
     visibleSnoozedThreads,
     visibleWorkingThreads,
@@ -3531,6 +3552,19 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                                   "active",
                                   sidebarFolderRowId(folder.group.projectKey),
                                 ),
+                              );
+                            }
+                            if (
+                              !folder.collapsed &&
+                              (folder.hiddenThreads.length > 0 || folder.canShowLess)
+                            ) {
+                              items.push(
+                                <SidebarFolderShowMoreRow
+                                  key={`project-folder-more:${folder.group.projectKey}`}
+                                  group={folder.group}
+                                  hiddenCount={folder.hiddenThreads.length}
+                                  onToggle={toggleFolderShowAll}
+                                />,
                               );
                             }
                           }
