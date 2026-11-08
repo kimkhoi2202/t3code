@@ -1310,19 +1310,17 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
           api.contextMenu.show(
             [
               { id: "new-thread", label: gt("New thread") },
-              { id: "settled-threads", label: gt("Show settled threads"), icon: "circle-check" },
+              { id: "settled-threads", label: gt("Show settled threads") },
               { id: "copy-path", label: gt("Copy path") },
-              ...(revealLabel === undefined
-                ? []
-                : [{ id: "reveal", label: revealLabel, icon: "folder-tree" }]),
+              ...(revealLabel === undefined ? [] : [{ id: "reveal", label: revealLabel }]),
               ...(canPinProject(group)
                 ? [
                     group.pinned
-                      ? { id: "unpin", label: gt("Unpin project"), icon: "pin-off" }
-                      : { id: "pin", label: gt("Pin project"), icon: "pin" },
+                      ? { id: "unpin", label: gt("Unpin project") }
+                      : { id: "pin", label: gt("Pin project") },
                   ]
                 : []),
-              { id: "project-settings", label: gt("Project settings"), icon: "settings" },
+              { id: "project-settings", label: gt("Project settings") },
             ],
             position,
             source,
