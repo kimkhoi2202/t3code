@@ -68,8 +68,8 @@ it("lists only the project's settled threads, most recently settled first", asyn
     <ProjectSettledThreadsDialog group={group} onClose={vi.fn()} onOpenThread={vi.fn()} />,
   );
 
-  const dialog = page.getByRole("dialog", { name: "Settled threads" });
-  await expect.element(dialog.getByText("· 2 threads")).toBeVisible();
+  const dialog = page.getByRole("dialog", { name: "Settled threads 2", exact: true });
+  await expect.element(dialog).toBeVisible();
   const titles = dialog
     .getByRole("listitem")
     .elements()

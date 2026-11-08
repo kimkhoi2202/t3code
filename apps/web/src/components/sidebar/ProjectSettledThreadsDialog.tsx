@@ -15,9 +15,11 @@ import {
 } from "@t3tools/client-runtime/state/thread-sort";
 import type { OlderSettledScope } from "@t3tools/client-runtime/state/threads";
 import { AuthOrchestrationOperateScope, type ScopedThreadRef } from "@t3tools/contracts";
+import { msg, T, useGT, useMessages } from "gt-react";
 import { ChevronDownIcon, Undo2Icon } from "lucide-react";
 import { useRef, useState } from "react";
 
+import { m } from "~/i18n/messages";
 import { cn } from "~/lib/utils";
 
 import { isContextMenuOpen } from "../../contextMenu";
@@ -87,7 +89,7 @@ function reportFailure(result: AtomCommandResult<unknown, unknown>, title: strin
     stackedThreadToast({
       type: "error",
       title,
-      description: error instanceof Error ? error.message : "An error occurred.",
+      description: error instanceof Error ? error.message : m(msg("An error occurred.")),
     }),
   );
 }
@@ -97,6 +99,8 @@ export function ProjectSettledThreadsDialog(props: {
   readonly onClose: () => void;
   readonly onOpenThread: (threadRef: ScopedThreadRef) => void;
 }) {
+  const gt = useGT();
+  const messages = useMessages();
   const { group, onOpenThread } = props;
   const [visibleCount, setVisibleCount] = useState(PAGE_COUNT);
   const popupRef = useRef<HTMLDivElement>(null);
@@ -106,7 +110,7 @@ export function ProjectSettledThreadsDialog(props: {
   const hiddenCount = Math.max(0, total - threads.length);
 
   const unsettle = async (threadRef: ScopedThreadRef) =>
-    reportFailure(await unsettleThread(threadRef), "Failed to un-settle thread");
+    reportFailure(await unsettleThread(threadRef), messages(msg("Failed to un-settle thread")));
 
   const showThreadMenu = async (
     thread: EnvironmentThreadShell,
@@ -119,23 +123,23 @@ export function ProjectSettledThreadsDialog(props: {
     const clicked = await settlePromise(() =>
       api.contextMenu.show(
         [
-          { id: "open", label: "Open thread", icon: "message-square" },
+          { id: "open", label: gt("Open thread"), icon: "message-square" },
           {
             id: "unsettle",
-            label: "Un-settle thread",
+            label: gt("Un-settle thread"),
             icon: "circle-check",
             disabled: !canOperate,
           },
           {
             id: "archive",
-            label: "Archive thread",
+            label: gt("Archive thread"),
             icon: "archive",
             disabled: !canOperate || !threadRuntimeCanArchive(thread.runtime),
             separatorBefore: true,
           },
           {
             id: "delete",
-            label: "Delete",
+            label: gt("Delete", { $context: "verb" }),
             icon: "trash",
             destructive: true,
             disabled: !canOperate,
@@ -155,15 +159,15 @@ export function ProjectSettledThreadsDialog(props: {
       case "archive": {
         if (confirmThreadArchive) {
           const confirmed = await settlePromise(() =>
-            api.dialogs.confirm(`Archive thread "${thread.title}"?`),
+            api.dialogs.confirm(gt('Archive thread "{title}"?', { title: thread.title })),
           );
           if (confirmed._tag === "Failure" || !confirmed.value) return;
         }
-        reportFailure(await archiveThread(threadRef), "Failed to archive thread");
+        reportFailure(await archiveThread(threadRef), gt("Failed to archive thread"));
         return;
       }
       case "delete":
-        reportFailure(await confirmAndDeleteThread(threadRef), "Failed to delete thread");
+        reportFailure(await confirmAndDeleteThread(threadRef), gt("Failed to delete thread"));
         return;
     }
   };
@@ -184,21 +188,21 @@ export function ProjectSettledThreadsDialog(props: {
       {/* The popup takes focus, so no row shows a focus highlight until Tab reaches it. */}
       <DialogPopup ref={popupRef} initialFocus={popupRef} className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Settled threads</DialogTitle>
+          <DialogTitle>
+            <T>Settled threads</T>{" "}
+            <span className="font-normal text-muted-foreground tabular-nums">{total}</span>
+          </DialogTitle>
           <DialogDescription>
             <span className="flex min-w-0 items-center gap-1.5">
               <ProjectFavicon project={group} className="size-3.5 shrink-0" />
               <span className="truncate">{group.displayName}</span>
-              <span className="shrink-0 tabular-nums">
-                · {total} {total === 1 ? "thread" : "threads"}
-              </span>
             </span>
           </DialogDescription>
         </DialogHeader>
         <DialogPanel>
           {threads.length === 0 && hiddenCount === 0 ? (
             <p className="py-6 text-center text-muted-foreground text-sm">
-              No settled threads in this project.
+              <T>No settled threads in this project.</T>
             </p>
           ) : (
             <ul className="-mx-2 flex flex-col">
@@ -226,10 +230,10 @@ export function ProjectSettledThreadsDialog(props: {
             >
               {shelf.loading ? <Spinner size="sm" tone="muted" /> : <ChevronDownIcon aria-hidden />}
               {shelf.loading
-                ? "Loading"
+                ? gt("Loading")
                 : shelf.failed
-                  ? "Could not load older threads. Retry"
-                  : `Show ${Math.min(hiddenCount, PAGE_COUNT)} more`}
+                  ? gt("Could not load older threads. Retry")
+                  : gt("Show {count} more", { count: Math.min(hiddenCount, PAGE_COUNT) })}
             </Button>
           ) : null}
         </DialogPanel>
@@ -281,7 +285,7 @@ function SettledThreadRow(props: {
             onClick={() => props.onUnsettle(threadRef)}
           >
             <Undo2Icon aria-hidden />
-            Un-settle
+            <T>Un-settle</T>
           </Button>
         </span>
       ) : null}
