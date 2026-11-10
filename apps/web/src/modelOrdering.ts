@@ -1,4 +1,4 @@
-import type { ProviderInstanceId } from "@t3tools/contracts";
+import type { ProviderDriverKind, ProviderInstanceId } from "@t3tools/contracts";
 import * as Arr from "effect/Array";
 import * as Order from "effect/Order";
 
@@ -83,4 +83,21 @@ export function sortProviderModelItems<T extends ProviderModelItem>(
   ];
 
   return Arr.sort(items, Order.combineAll(orders));
+}
+
+// A slug names the same model only within one driver, so other drivers get their own group.
+export function groupProviderModelItemsByModel<
+  T extends ProviderModelItem & { readonly driverKind: ProviderDriverKind },
+>(items: ReadonlyArray<T>): T[] {
+  const groups = new Map<string, T[]>();
+  for (const item of items) {
+    const key = `${item.driverKind}:${item.slug}`;
+    const group = groups.get(key);
+    if (group) {
+      group.push(item);
+    } else {
+      groups.set(key, [item]);
+    }
+  }
+  return Array.from(groups.values()).flat();
 }

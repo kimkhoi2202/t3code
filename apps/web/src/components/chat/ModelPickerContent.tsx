@@ -70,7 +70,11 @@ import {
   shouldShowInstanceBadge,
   type ProviderInstanceEntry,
 } from "../../providerInstances";
-import { providerModelKey, sortProviderModelItems } from "../../modelOrdering";
+import {
+  groupProviderModelItemsByModel,
+  providerModelKey,
+  sortProviderModelItems,
+} from "../../modelOrdering";
 import { hasRuntimeModelCatalog } from "../../providerModels";
 
 type ModelPickerItem = {
@@ -716,11 +720,12 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
       result = result.filter((m) => m.instanceId === selectedInstanceId);
     }
 
-    return sortProviderModelItems(result, {
+    const sorted = sortProviderModelItems(result, {
       favoriteModelKeys: favoritesSet,
       groupFavorites: selectedInstanceId !== "favorites",
       instanceOrder: selectedInstanceId === "favorites" ? instanceOrder : [],
     });
+    return selectedInstanceId === "favorites" ? groupProviderModelItemsByModel(sorted) : sorted;
   })();
 
   const legacySection = (() => {
