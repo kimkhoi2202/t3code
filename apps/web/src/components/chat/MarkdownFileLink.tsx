@@ -47,7 +47,8 @@ interface MarkdownFileLinkProps {
   onOpenInPanel: (panelPath: string, line: number | undefined) => void;
   resolveDragPath: () => Promise<string>;
   resolveCopyPaths: () => Promise<ReturnType<typeof markdownFileCopyPaths>>;
-  openInEditorMenuLabel: string;
+  /** null leaves the editor out of the menu; clicks still use onOpen. */
+  openInEditorMenuLabel: string | null;
   onOpenInBrowser?: (() => Promise<AtomCommandResult<unknown, unknown>>) | undefined;
   onOpenMedia?: (() => void) | undefined;
   onReveal?: (() => Promise<AtomCommandResult<unknown, unknown>>) | undefined;
@@ -258,10 +259,12 @@ export const MarkdownFileLink = memo(function MarkdownFileLink({
       const copyItems = markdownFileCopyMenuItems({ targetPath, workspaceRelativePath });
       const clicked = await api.contextMenu.show(
         [
-          ...(onOpenMedia ? ([{ id: "preview-media", label: gt("Preview media") }] as const) : []),
-          ...(onOpen ? ([{ id: "open", label: openInEditorMenuLabel }] as const) : []),
           ...(onOpenInDefaultApp
-            ? ([{ id: "open-default-app", label: gt("Open in system app") }] as const)
+            ? ([{ id: "open-default-app", label: gt("Open in default app") }] as const)
+            : []),
+          ...(onOpenMedia ? ([{ id: "preview-media", label: gt("Preview media") }] as const) : []),
+          ...(onOpen && openInEditorMenuLabel !== null
+            ? ([{ id: "open", label: openInEditorMenuLabel }] as const)
             : []),
           ...(onOpenInBrowser
             ? ([{ id: "open-in-browser", label: gt("Open in integrated browser") }] as const)

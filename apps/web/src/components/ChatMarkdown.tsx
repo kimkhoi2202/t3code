@@ -993,10 +993,7 @@ function useChatMarkdownState({
           resolvePathLinkTarget((await resolveHostPath()).absolutePath, cwd ?? "")
         }
         onOpenInDefaultApp={
-          canUseShellActions &&
-          !canOpenApp &&
-          availableEditors.includes("file-manager") &&
-          preferredEditor !== "file-manager"
+          canUseShellActions && !canOpenApp && availableEditors.includes("file-manager")
             ? async () => launchFileManager((await resolveHostPath()).absolutePath)
             : undefined
         }
@@ -1009,7 +1006,13 @@ function useChatMarkdownState({
             ? () => openMarkdownMedia(mediaPath, fileLinkMeta.filePath)
             : undefined
         }
-        openInEditorMenuLabel={canOpenApp ? gt("Open app") : preferredEditorMenuLabel}
+        openInEditorMenuLabel={
+          canOpenApp
+            ? gt("Open app")
+            : preferredEditor === "file-manager"
+              ? null
+              : preferredEditorMenuLabel
+        }
         onReveal={
           canUseShellActions && revealInFileManagerLabel !== undefined
             ? async () =>

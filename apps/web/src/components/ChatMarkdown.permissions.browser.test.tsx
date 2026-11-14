@@ -16,6 +16,7 @@ import { useRightPanelStore } from "../rightPanelStore";
 
 const state = vi.hoisted(() => ({
   allowed: true,
+  editor: "vscode",
   listeners: new Set<() => void>(),
   openEditor: vi.fn(),
   link: vi.fn(),
@@ -85,8 +86,8 @@ vi.mock(import("../remoteOpen"), async (original) => ({
 }));
 vi.mock(import("../hooks/useLocalStorage"), async (original) => ({
   ...(await original()),
-  useLocalStorage: (() => ["vscode", vi.fn()]) as never,
-  getLocalStorageItem: (() => "vscode") as never,
+  useLocalStorage: (() => [state.editor, vi.fn()]) as never,
+  getLocalStorageItem: (() => state.editor) as never,
 }));
 vi.mock(import("../localApi"), async (original) => ({
   ...(await original()),
@@ -130,6 +131,7 @@ const serverConfig = {
 function setup() {
   using stack = new DisposableStack();
   state.allowed = true;
+  state.editor = "vscode";
   state.listeners.clear();
   state.pullRequests = [];
   state.openEditor.mockReset().mockResolvedValue(AsyncResult.success(undefined));
@@ -188,8 +190,8 @@ it("removes host actions after revocation while keeping file preview and copying
   await using screen = await renderMarkdown("[Readme](docs/readme.md)");
   await screen.openContextMenu();
   expect(offeredActions()).toEqual([
-    "open",
     "open-default-app",
+    "open",
     "reveal",
     "copy-relative",
     "copy-full",
@@ -202,6 +204,14 @@ it("removes host actions after revocation while keeping file preview and copying
   await act(async () => screen.anchor().click());
   expect(state.openFile).toHaveBeenCalledWith(threadRef, "docs/readme.md", undefined);
   expect(state.openEditor).not.toHaveBeenCalled();
+});
+
+it("leaves the editor item out when the file manager is the preferred editor", async () => {
+  using _setup = setup();
+  state.editor = "file-manager";
+  await using screen = await renderMarkdown("[Readme](docs/readme.md)");
+  await screen.openContextMenu();
+  expect(offeredActions()).toEqual(["open-default-app", "reveal", "copy-relative", "copy-full"]);
 });
 
 it("does not launch an editor after revocation while its context menu is open", async () => {
