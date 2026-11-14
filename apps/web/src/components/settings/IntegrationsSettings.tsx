@@ -1427,7 +1427,7 @@ function BrowserAutoShowFloatingPreviewSetting({ disabled }: { readonly disabled
       {...searchableSetting("browser-auto-show-floating-preview")}
       devicePreference
       description={gt(
-        "Show the floating preview when an agent opens a browser or device unless the agent says otherwise.",
+        "Float a browser or device over the chat when an agent opens it, unless the agent says otherwise, or when you close the right panel on it.",
       )}
       resetAction={
         !disabled && autoShow !== DEFAULT_BROWSER_AUTO_SHOW_FLOATING_PREVIEW ? (
