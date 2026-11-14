@@ -371,7 +371,11 @@ export function QueuedRunsControl({
               const rowRunId = item.runId;
               const rowServerIndex = item.serverIndex;
               const rowDraggable =
-                rowRunId !== null && rowServerIndex !== null && canReorder && busyRunId === null;
+                queued.length > 1 &&
+                rowRunId !== null &&
+                rowServerIndex !== null &&
+                canReorder &&
+                busyRunId === null;
               return (
                 <SortableQueuedRow
                   key={item.key}
