@@ -14,6 +14,7 @@ export function cuaDriverHostOptions(
     dangerouslyBypassApprovals: false,
     inheritStderr: true,
     noOverlay: false,
+    captureStderr: false,
     environment: wayland
       ? [
           {

@@ -2,33 +2,33 @@
  * The Cua Driver release T3 bundles and downloads. The catalog's SDK may trail it; it checks only
  * contract and protocol versions. To bump, copy each size and SHA-256 from the release assets.
  */
-export const CUA_DRIVER_VERSION = "0.38.0";
+export const CUA_DRIVER_VERSION = "0.54.0";
 
 const ARCHIVES = {
   "darwin-universal": {
     archiveName: `cua-driver-rs-${CUA_DRIVER_VERSION}-darwin-universal-binary.tar.gz`,
-    bytes: 53_208_248,
-    sha256: "2bb8dc4a7e69185ffd04c4a9c0eab590bd2c54b72c2c1be13ab675be4f487732",
+    bytes: 43_674_626,
+    sha256: "c0ddcf71381ec4b745703694c2cd19812d2938b8a095cbccac994d8d2dc4893d",
   },
   "linux-x64": {
     archiveName: `cua-driver-rs-${CUA_DRIVER_VERSION}-linux-x86_64-binary.tar.gz`,
-    bytes: 37_183_089,
-    sha256: "31ab9709dd91ce73677e49b9f3e75c6f0d3e4d9625c286c9e58262bfbea698dd",
+    bytes: 30_223_995,
+    sha256: "53b38ee3a5aeed39bdcd3acee0bea98a0eed3315e9df2d8af73345680c49868e",
   },
   "linux-arm64": {
     archiveName: `cua-driver-rs-${CUA_DRIVER_VERSION}-linux-arm64-binary.tar.gz`,
-    bytes: 36_674_648,
-    sha256: "80c9ae66bc7322052dd426c6133c96086b33894bf06c972bca8215384400b33d",
+    bytes: 28_119_796,
+    sha256: "5f9699f4933944dd735083bbc86d59a98c6574dbb220a85640aa2484590a11bf",
   },
   "win32-x64": {
     archiveName: `cua-driver-rs-${CUA_DRIVER_VERSION}-windows-x86_64-binary.zip`,
-    bytes: 35_890_999,
-    sha256: "5edaa74d0afa1b55a9668dbc4f32736507bd2bd4d75b18ca1dc8881bb12402b5",
+    bytes: 32_527_087,
+    sha256: "f9a651bc085ba8a34bfd7f192ee463517e503cfc883d1cb65899017b7b7fe80c",
   },
   "win32-arm64": {
     archiveName: `cua-driver-rs-${CUA_DRIVER_VERSION}-windows-arm64-binary.zip`,
-    bytes: 33_682_556,
-    sha256: "d25c8ebfffb34e4c095ea170baf47b87c35dc0d1116f42e46b39df2bcbff8700",
+    bytes: 30_326_446,
+    sha256: "2ab9e712ed4cc54eb2c003fa14152101a7bf1bd14ee161e7740121a263766b64",
   },
 } as const;
 
