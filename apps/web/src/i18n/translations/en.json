@@ -12205,5 +12205,101 @@
   "27d76249d09eb69f": "Review guide ready",
   "faa3bb26abb39c93": "Review guide failed",
   "b7df38b7d8792d78": "Open guide",
-  "9e91e9a77b664e4e": "Could not start a review guide"
+  "9e91e9a77b664e4e": "Could not start a review guide",
+  "d89418e289b38f62": "Change managed tunnel connectivity.",
+  "77069ea78dc20ef2": "Using your computer",
+  "f624d18fa6181f60": "Stop",
+  "bf066df32c752202": "Show linked pull requests",
+  "cc10829e6a2d7661": "Application: {name}",
+  "0051e6585d7ea014": "No linked pull requests are available for this thread.",
+  "713aa4c9c08f042b": "No linked pull requests available.",
+  "aedaf7f4faba8bd3": "Send again once its thumbnail appears.",
+  "5b31a853afbdd6bc": "Searching files, threads, and applications...",
+  "1fcbf1a95bcb4002": "Files, threads, and applications",
+  "4fcabb6aca677012": "No matching files, threads, or applications.",
+  "55390eede35b4c5b": "Available when the main thread is idle.",
+  "adb7e02a95cde08e": "Available after a finished reply.",
+  "528a915a5a8da499": "Brought back",
+  "cadee16eb4a6a398": "The main thread gets this side chat with your next message there.",
+  "46e115f4d73fdaad": "Could not bring back the side chat",
+  "9bd31b8911a11607": "Bring back",
+  "c8c58bab29faa2e9": "Application",
+  "be6231ac5b08f35e": "Side chats take text only",
+  "5511e975ba69f726": "Computer",
+  "1ef44b8f78119bba": "Floating computer use preview",
+  "e60b3936c5e2190b": "Preview unavailable",
+  "65ba9047454a5170": "Waiting for the agent…",
+  "93cebe7fdcc9821e": "Linked pull requests unavailable",
+  "47c92b77099a6346": "This environment does not support multiple linked pull requests.",
+  "74da2dae824a4573": "Link",
+  "c5cf4921e9b53824": "Chrome DevTools MCP did not install. Try again.",
+  "290cac9bd85be15a": "Use your browser tabs",
+  "2709455317e2d538": [
+    "Agents connect to the browser on ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " that has remote debugging on. On ",
+    {
+      "i": 2,
+      "k": "_gt_value_2",
+      "v": "v"
+    },
+    ", open the browser's page below and turn on remote debugging. The browser asks to allow each connection, so someone at ",
+    {
+      "i": 3,
+      "k": "_gt_value_3",
+      "v": "v"
+    },
+    " has to approve it."
+  ],
+  "2e844dc004983ebb": "No Chromium browser found. Install Chrome, Edge, Brave, Helium, or Chromium.",
+  "99859ef84af13eb3": "On",
+  "707f67fce618fc5e": "Could not save the setting. Try again.",
+  "884fd831365c61c5": "{host} needs Accessibility and Screen Recording. Finish setup at that Mac: in System Settings → Privacy & Security, grant access to the app or process running this environment. You can turn the setting on from here.",
+  "9250c3c1139e34ba": "{host} needs a signed-in graphical session. On Wayland, someone at {host} may need to approve a screen capture prompt.",
+  "7c95483d772cca40": "{host} needs a signed-in desktop session. If Windows shows a security prompt for Cua Driver, someone at that computer must respond.",
+  "8d470dfb1a596179": "Computer use needs a desktop on {host}.",
+  "82a12d86994dfd17": "Click, type, and read controls in other apps.",
+  "4bbac051622766c1": "See the screen to decide what to do next.",
+  "a9b9096280be6466": [
+    "Let agents use ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    }
+  ],
+  "2134eedfc10881bf": [
+    "Cua Driver lets agents see and use apps on ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " in the background, without moving your cursor. Agent sessions started afterwards get the computer use tools."
+  ],
+  "91db0a2b0ad84a78": "If a permission stays off after you allow it, quit and reopen T3 Code.",
+  "72cb818f86f74f1d": "Connect the selected environment to configure computer use.",
+  "3a989eeb48af4c84": "Choose one environment to configure computer use on its host.",
+  "c97c0f969ce80c8c": "Could not check computer use: {error}",
+  "801552a09d64a639": "Checking host…",
+  "e1b60530b496ca5c": "Computer use is not supported on this host.",
+  "639ff10e3ee18700": "Running",
+  "141b50a063b68ed7": "Starts with the next agent session",
+  "0e89b20d03477910": "Let agents see and use apps on {host} through Cua Driver, in the background without moving your cursor. New agent sessions get the tools; turning this off stops the driver.",
+  "d18307275ee97e9a": "Reset computer use to default",
+  "1419352c258bc7de": "This connection cannot change settings on this host.",
+  "b26ad48726dd8132": "Computer use is on, but Cua Driver could not restart. Try Setup again.",
+  "024b1791e74e4875": "Needs setup",
+  "565cc034918e3732": "Using {browser}",
+  "ce62c408d095401d": "Turn on remote debugging in your browser",
+  "2541722d5b0f9ccd": "Let agents use the open tabs and sign-ins in your browser on {host} through Chrome DevTools MCP.",
+  "b714ba7431dc4989": "Agent browser tabs",
+  "143cde2e0b8d2e7c": "Setup",
+  "9a44b2704adff236": "chrome devtools tabs sign-ins signed in browser remote debugging edge brave",
+  "04050ac46c68cdaa": "cua driver apps desktop screen click type agents control mac linux windows",
+  "2485877057d662f6": "The save failed. Try again."
 }

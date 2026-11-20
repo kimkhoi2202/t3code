@@ -12195,5 +12195,101 @@
   "27d76249d09eb69f": "Guia de revisão pronto",
   "faa3bb26abb39c93": "O guia de revisão falhou",
   "b7df38b7d8792d78": "Abrir guia",
-  "9e91e9a77b664e4e": "Não foi possível iniciar um guia de revisão"
+  "9e91e9a77b664e4e": "Não foi possível iniciar um guia de revisão",
+  "d89418e289b38f62": "Alterar a conectividade do túnel gerenciado.",
+  "77069ea78dc20ef2": "Usando seu computador",
+  "f624d18fa6181f60": "Parar",
+  "bf066df32c752202": "Mostrar pull requests vinculados",
+  "cc10829e6a2d7661": "App: {name}",
+  "0051e6585d7ea014": "Nenhum pull request vinculado disponível para esta thread.",
+  "713aa4c9c08f042b": "Nenhum pull request vinculado disponível.",
+  "aedaf7f4faba8bd3": "Envie novamente quando a miniatura aparecer.",
+  "5b31a853afbdd6bc": "Pesquisando arquivos, threads e apps...",
+  "1fcbf1a95bcb4002": "Arquivos, threads e apps",
+  "4fcabb6aca677012": "Nenhum arquivo, thread ou app correspondente.",
+  "55390eede35b4c5b": "Disponível quando a thread principal estiver ociosa.",
+  "adb7e02a95cde08e": "Disponível após uma resposta concluída.",
+  "528a915a5a8da499": "Trazido de volta",
+  "cadee16eb4a6a398": "A thread principal recebe este chat paralelo junto com sua próxima mensagem lá.",
+  "46e115f4d73fdaad": "Não foi possível trazer de volta o chat paralelo",
+  "9bd31b8911a11607": "Trazer de volta",
+  "c8c58bab29faa2e9": "App",
+  "be6231ac5b08f35e": "Chats paralelos aceitam só texto",
+  "5511e975ba69f726": "Computador",
+  "1ef44b8f78119bba": "Pré-visualização flutuante do uso do computador",
+  "e60b3936c5e2190b": "Pré-visualização indisponível",
+  "65ba9047454a5170": "Aguardando o agente…",
+  "93cebe7fdcc9821e": "Pull requests vinculados indisponíveis",
+  "47c92b77099a6346": "Este ambiente não permite vários pull requests vinculados.",
+  "74da2dae824a4573": "Vincular",
+  "c5cf4921e9b53824": "O Chrome DevTools MCP não foi instalado. Tente novamente.",
+  "290cac9bd85be15a": "Usar as abas do seu navegador",
+  "2709455317e2d538": [
+    "Os agentes se conectam ao navegador em ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " que tem a depuração remota ativada. Em ",
+    {
+      "i": 2,
+      "k": "_gt_value_2",
+      "v": "v"
+    },
+    ", abra a página do navegador abaixo e ative a depuração remota. O navegador pede para permitir cada conexão, então alguém em ",
+    {
+      "i": 3,
+      "k": "_gt_value_3",
+      "v": "v"
+    },
+    " precisa aprová-la."
+  ],
+  "2e844dc004983ebb": "Nenhum navegador Chromium encontrado. Instale Chrome, Edge, Brave, Helium ou Chromium.",
+  "99859ef84af13eb3": "Ativada",
+  "707f67fce618fc5e": "Não foi possível salvar a configuração. Tente novamente.",
+  "884fd831365c61c5": "{host} precisa de Acessibilidade e Gravação de Tela. Termine a configuração nesse Mac: em Ajustes do Sistema → Privacidade e Segurança, dê acesso ao app ou processo que executa este ambiente. Você pode ativar a configuração por aqui.",
+  "9250c3c1139e34ba": "{host} precisa de uma sessão gráfica conectada. No Wayland, alguém em {host} pode precisar aprovar um pedido de captura de tela.",
+  "7c95483d772cca40": "{host} precisa de uma sessão de área de trabalho conectada. Se o Windows mostrar um aviso de segurança para o Cua Driver, alguém nesse computador precisa responder.",
+  "8d470dfb1a596179": "O uso do computador precisa de uma área de trabalho em {host}.",
+  "82a12d86994dfd17": "Clicar, digitar e ler controles em outros apps.",
+  "4bbac051622766c1": "Ver a tela para decidir o que fazer em seguida.",
+  "a9b9096280be6466": [
+    "Permitir que agentes usem ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    }
+  ],
+  "2134eedfc10881bf": [
+    "O Cua Driver permite que agentes vejam e usem apps em ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " em segundo plano, sem mover seu cursor. As sessões de agente iniciadas depois recebem as ferramentas de uso do computador."
+  ],
+  "91db0a2b0ad84a78": "Se uma permissão continuar desativada depois de permitida, encerre e reabra o T3 Code.",
+  "72cb818f86f74f1d": "Conecte o ambiente selecionado para configurar o uso do computador.",
+  "3a989eeb48af4c84": "Escolha um ambiente para configurar o uso do computador no host dele.",
+  "c97c0f969ce80c8c": "Não foi possível verificar o uso do computador: {error}",
+  "801552a09d64a639": "Verificando o host…",
+  "e1b60530b496ca5c": "O uso do computador não é compatível com este host.",
+  "639ff10e3ee18700": "Executando",
+  "141b50a063b68ed7": "Inicia com a próxima sessão de agente",
+  "0e89b20d03477910": "Permite que agentes vejam e usem apps em {host} pelo Cua Driver, em segundo plano e sem mover seu cursor. Novas sessões de agente recebem as ferramentas; desativar isso para o driver.",
+  "d18307275ee97e9a": "Redefinir o uso do computador para o padrão",
+  "1419352c258bc7de": "Esta conexão não pode alterar configurações neste host.",
+  "b26ad48726dd8132": "O uso do computador está ativado, mas o Cua Driver não conseguiu reiniciar. Abra a configuração novamente.",
+  "024b1791e74e4875": "Precisa de configuração",
+  "565cc034918e3732": "Usando {browser}",
+  "ce62c408d095401d": "Ative a depuração remota no seu navegador",
+  "2541722d5b0f9ccd": "Permite que agentes usem as abas abertas e os logins do seu navegador em {host} pelo Chrome DevTools MCP.",
+  "b714ba7431dc4989": "Abas do navegador para agentes",
+  "143cde2e0b8d2e7c": "Configuração",
+  "9a44b2704adff236": "chrome devtools abas logins conectado navegador depuração remota edge brave",
+  "04050ac46c68cdaa": "cua driver apps área de trabalho tela clicar digitar agentes controle uso do computador mac linux windows",
+  "2485877057d662f6": "Não foi possível salvar. Tente novamente."
 }

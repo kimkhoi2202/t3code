@@ -73,7 +73,10 @@ import { formatReadToolLabel, formatSearchToolLabel } from "@t3tools/shared/tool
 import { isWorkspaceImagePreviewPath } from "@t3tools/shared/mediaPreview";
 import * as ProviderHost from "@t3tools/provider-core/server/ProviderHost";
 import { makeAcpMcpOverAcpBridge, type AcpMcpOverAcpBridge } from "./mcpOverAcpBridge.ts";
-import { mcpToolPresentation } from "@t3tools/provider-core/server/mcpToolPresentation";
+import {
+  cuaCallContext,
+  mcpToolPresentation,
+} from "@t3tools/provider-core/server/mcpToolPresentation";
 import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
 import * as McpProviderSession from "@t3tools/provider-core/server/mcpSession";
 import {
@@ -1003,6 +1006,9 @@ function acpMcpContext(
     return { servers: [], acpServers: [], httpServers: [] };
   }
   // codex-acp 1.2.0 and pi-acp drop injected HTTP servers, so HTTP is opt-in per flavor.
+  // Cua Driver and browser tabs are already stdio servers, so every form lists them: the runtime
+  // sends the agent only one of them.
+  const local = McpProviderSession.localAcpMcpServers(session);
   return {
     servers: [
       {
@@ -1015,8 +1021,9 @@ function acpMcpContext(
           { name: "T3_ACP_MCP_AUTHORIZATION", value: session.authorizationHeader },
         ],
       },
+      ...local,
     ],
-    acpServers: [{ type: "acp", name: "t3-code", serverId: "t3-code" }],
+    acpServers: [{ type: "acp", name: "t3-code", serverId: "t3-code" }, ...local],
     httpServers:
       mcpOverHttp === true
         ? [
@@ -1031,6 +1038,7 @@ function acpMcpContext(
                   : []),
               ],
             },
+            ...local,
           ]
         : [],
     endpoint: session.endpoint,
@@ -4702,6 +4710,14 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
                 source: unknownRecord(
                   (unknownRecord(rawOutputRecord?.result) ?? rawOutputRecord)?._meta,
                 )?.source,
+                ...cuaCallContext({
+                  serverName: mcpIdentity.server,
+                  toolName: mcpIdentity.tool,
+                  threadId: base.threadId,
+                  status: base.status,
+                  args: mcpIdentity.input ?? unknownRecord(rawInputRecord?.arguments),
+                  result: rawOutput,
+                }),
               }),
               type: "dynamic_tool",
               toolName,
@@ -8905,6 +8921,8 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
           const runtimeInstructions = buildRuntimeInstructions({
             harness: flavor.runtimeHarness ?? driver,
             model: turnInput.modelSelection.model,
+            computerUse: mcpSession?.cuaDriver !== undefined,
+            browserTabs: mcpSession?.browserTabs?.browserName,
             pullRequestLinking:
               sessionSetup === null ||
               flavor.sessionCarriesPullRequestLinking?.(sessionSetup.initializeResult) !== true,

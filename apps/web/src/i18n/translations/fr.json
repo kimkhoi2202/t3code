@@ -12196,5 +12196,101 @@
   "27d76249d09eb69f": "Guide de revue prêt",
   "faa3bb26abb39c93": "Échec du guide de revue",
   "b7df38b7d8792d78": "Ouvrir le guide",
-  "9e91e9a77b664e4e": "Impossible de démarrer un guide de revue"
+  "9e91e9a77b664e4e": "Impossible de démarrer un guide de revue",
+  "d89418e289b38f62": "Modifier la connectivité du tunnel géré.",
+  "77069ea78dc20ef2": "Utilise votre ordinateur",
+  "f624d18fa6181f60": "Arrêter",
+  "bf066df32c752202": "Afficher les pull requests associées",
+  "cc10829e6a2d7661": "App : {name}",
+  "0051e6585d7ea014": "Aucune pull request associée n’est disponible pour ce fil.",
+  "713aa4c9c08f042b": "Aucune pull request associée disponible.",
+  "aedaf7f4faba8bd3": "Renvoyez quand sa miniature apparaît.",
+  "5b31a853afbdd6bc": "Recherche des fichiers, fils et apps...",
+  "1fcbf1a95bcb4002": "Fichiers, fils et apps",
+  "4fcabb6aca677012": "Aucun fichier, fil ni app correspondant.",
+  "55390eede35b4c5b": "Disponible quand le fil principal est inactif.",
+  "adb7e02a95cde08e": "Disponible après une réponse terminée.",
+  "528a915a5a8da499": "Ramenée",
+  "cadee16eb4a6a398": "Le fil principal recevra cette discussion annexe avec votre prochain message dans ce fil.",
+  "46e115f4d73fdaad": "Impossible de ramener la discussion annexe",
+  "9bd31b8911a11607": "Ramener",
+  "c8c58bab29faa2e9": "App",
+  "be6231ac5b08f35e": "Les discussions annexes n’acceptent que du texte",
+  "5511e975ba69f726": "Ordinateur",
+  "1ef44b8f78119bba": "Aperçu flottant du contrôle de l’ordinateur",
+  "e60b3936c5e2190b": "Aperçu indisponible",
+  "65ba9047454a5170": "En attente de l’agent…",
+  "93cebe7fdcc9821e": "Pull requests associées indisponibles",
+  "47c92b77099a6346": "Cet environnement ne prend pas en charge plusieurs pull requests associées.",
+  "74da2dae824a4573": "Associer",
+  "c5cf4921e9b53824": "Chrome DevTools MCP ne s’est pas installé. Réessayez.",
+  "290cac9bd85be15a": "Utiliser les onglets de votre navigateur",
+  "2709455317e2d538": [
+    "Les agents se connectent au navigateur de ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " dont le débogage à distance est activé. Sur ",
+    {
+      "i": 2,
+      "k": "_gt_value_2",
+      "v": "v"
+    },
+    ", ouvrez la page du navigateur ci-dessous et activez le débogage à distance. Le navigateur demande d’autoriser chaque connexion : quelqu’un devant ",
+    {
+      "i": 3,
+      "k": "_gt_value_3",
+      "v": "v"
+    },
+    " doit donc l’approuver."
+  ],
+  "2e844dc004983ebb": "Aucun navigateur Chromium trouvé. Installez Chrome, Edge, Brave, Helium ou Chromium.",
+  "99859ef84af13eb3": "Activé",
+  "707f67fce618fc5e": "Impossible d’enregistrer le paramètre. Réessayez.",
+  "884fd831365c61c5": "{host} a besoin de l’Accessibilité et de l’Enregistrement de l’écran. Terminez la configuration sur ce Mac : dans Réglages Système → Confidentialité et sécurité, accordez l’accès à l’app ou au processus qui exécute cet environnement. Vous pouvez activer le paramètre d’ici.",
+  "9250c3c1139e34ba": "{host} a besoin d’une session graphique ouverte. Sous Wayland, quelqu’un devant {host} devra peut-être approuver une demande de capture d’écran.",
+  "7c95483d772cca40": "{host} a besoin d’une session de bureau ouverte. Si Windows affiche une alerte de sécurité pour Cua Driver, quelqu’un devant cet ordinateur doit y répondre.",
+  "8d470dfb1a596179": "Le contrôle de l’ordinateur nécessite un bureau sur {host}.",
+  "82a12d86994dfd17": "Cliquer, saisir du texte et lire les commandes dans d’autres apps.",
+  "4bbac051622766c1": "Voir l’écran pour décider de la suite.",
+  "a9b9096280be6466": [
+    "Autoriser les agents à utiliser ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    }
+  ],
+  "2134eedfc10881bf": [
+    "Cua Driver permet aux agents de voir et d’utiliser les apps sur ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " en arrière-plan, sans déplacer votre curseur. Les sessions d’agent démarrées ensuite reçoivent les outils de contrôle de l’ordinateur."
+  ],
+  "91db0a2b0ad84a78": "Si une autorisation reste désactivée après l’avoir accordée, quittez puis rouvrez T3 Code.",
+  "72cb818f86f74f1d": "Connectez l’environnement sélectionné pour configurer le contrôle de l’ordinateur.",
+  "3a989eeb48af4c84": "Choisissez un environnement pour configurer le contrôle de l’ordinateur sur son hôte.",
+  "c97c0f969ce80c8c": "Impossible de vérifier le contrôle de l’ordinateur : {error}",
+  "801552a09d64a639": "Vérification de l’hôte…",
+  "e1b60530b496ca5c": "Le contrôle de l’ordinateur n’est pas pris en charge sur cet hôte.",
+  "639ff10e3ee18700": "En cours",
+  "141b50a063b68ed7": "Démarre avec la prochaine session d’agent",
+  "0e89b20d03477910": "Permet aux agents de voir et d’utiliser les apps sur {host} via Cua Driver, en arrière-plan sans déplacer votre curseur. Les nouvelles sessions d’agent reçoivent les outils ; désactiver ce réglage arrête le pilote.",
+  "d18307275ee97e9a": "Réinitialiser le contrôle de l’ordinateur à la valeur par défaut",
+  "1419352c258bc7de": "Cette connexion ne peut pas modifier les paramètres sur cet hôte.",
+  "b26ad48726dd8132": "Le contrôle de l’ordinateur est activé, mais Cua Driver n’a pas pu redémarrer. Relancez la configuration.",
+  "024b1791e74e4875": "Configuration requise",
+  "565cc034918e3732": "Utilise {browser}",
+  "ce62c408d095401d": "Activez le débogage à distance dans votre navigateur",
+  "2541722d5b0f9ccd": "Permet aux agents d’utiliser les onglets ouverts et les sessions connectées de votre navigateur sur {host} via Chrome DevTools MCP.",
+  "b714ba7431dc4989": "Onglets du navigateur pour les agents",
+  "143cde2e0b8d2e7c": "Configuration",
+  "9a44b2704adff236": "chrome devtools onglets connexions connecté navigateur débogage à distance edge brave",
+  "04050ac46c68cdaa": "cua driver apps bureau écran cliquer saisir agents contrôle ordinateur mac linux windows",
+  "2485877057d662f6": "L’enregistrement a échoué. Réessayez."
 }

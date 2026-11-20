@@ -12196,5 +12196,102 @@
   "27d76249d09eb69f": "Review-Leitfaden bereit",
   "faa3bb26abb39c93": "Review-Leitfaden fehlgeschlagen",
   "b7df38b7d8792d78": "Leitfaden öffnen",
-  "9e91e9a77b664e4e": "Review-Leitfaden konnte nicht gestartet werden"
+  "9e91e9a77b664e4e": "Review-Leitfaden konnte nicht gestartet werden",
+  "d89418e289b38f62": "Die Konnektivität des verwalteten Tunnels ändern.",
+  "77069ea78dc20ef2": "Verwendet deinen Computer",
+  "f624d18fa6181f60": "Stoppen",
+  "bf066df32c752202": "Verknüpfte Pull Requests anzeigen",
+  "cc10829e6a2d7661": "App: {name}",
+  "0051e6585d7ea014": "Für diesen Thread sind keine verknüpften Pull Requests verfügbar.",
+  "713aa4c9c08f042b": "Keine verknüpften Pull Requests verfügbar.",
+  "aedaf7f4faba8bd3": "Sende erneut, sobald die Miniatur erscheint.",
+  "5b31a853afbdd6bc": "Dateien, Threads und Apps werden durchsucht...",
+  "1fcbf1a95bcb4002": "Dateien, Threads und Apps",
+  "4fcabb6aca677012": "Keine passenden Dateien, Threads oder Apps.",
+  "55390eede35b4c5b": "Verfügbar, wenn der Haupt-Thread inaktiv ist.",
+  "adb7e02a95cde08e": "Verfügbar nach einer abgeschlossenen Antwort.",
+  "528a915a5a8da499": "Zurückgeholt",
+  "cadee16eb4a6a398": "Der Haupt-Thread erhält diesen Nebenchat mit deiner nächsten Nachricht dort.",
+  "46e115f4d73fdaad": "Der Nebenchat konnte nicht zurückgeholt werden",
+  "9bd31b8911a11607": "Zurückholen",
+  "c8c58bab29faa2e9": "App",
+  "be6231ac5b08f35e": "Nebenchats nehmen nur Text an",
+  "5511e975ba69f726": "Computer",
+  "1ef44b8f78119bba": "Schwebende Vorschau der Computersteuerung",
+  "e60b3936c5e2190b": "Vorschau nicht verfügbar",
+  "65ba9047454a5170": "Wartet auf den Agenten…",
+  "93cebe7fdcc9821e": "Verknüpfte Pull Requests nicht verfügbar",
+  "47c92b77099a6346": "Diese Umgebung unterstützt nicht mehrere verknüpfte Pull Requests.",
+  "74da2dae824a4573": "Verknüpfen",
+  "c5cf4921e9b53824": "Chrome DevTools MCP wurde nicht installiert. Versuch es erneut.",
+  "290cac9bd85be15a": "Deine Browser-Tabs verwenden",
+  "2709455317e2d538": [
+    "Agenten verbinden sich mit dem Browser auf ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    ", in dem Remote-Debugging aktiviert ist. Öffne auf ",
+    {
+      "i": 2,
+      "k": "_gt_value_2",
+      "v": "v"
+    },
+    " die unten angezeigte Seite des Browsers und aktiviere Remote-Debugging. Der Browser fragt bei jeder Verbindung nach, daher muss jemand an ",
+    {
+      "i": 3,
+      "k": "_gt_value_3",
+      "v": "v"
+    },
+    " sie bestätigen."
+  ],
+  "2e844dc004983ebb": "Kein Chromium-Browser gefunden. Installiere Chrome, Edge, Brave, Helium oder Chromium.",
+  "99859ef84af13eb3": "An",
+  "707f67fce618fc5e": "Die Einstellung konnte nicht gespeichert werden. Versuch es erneut.",
+  "884fd831365c61c5": "{host} benötigt Barrierefreiheit und Bildschirmaufnahme. Schließe die Einrichtung an diesem Mac ab: Gib unter Systemeinstellungen → Datenschutz & Sicherheit der App oder dem Prozess Zugriff, der diese Umgebung ausführt. Die Einstellung kannst du hier einschalten.",
+  "9250c3c1139e34ba": "{host} benötigt eine angemeldete grafische Sitzung. Unter Wayland muss eventuell jemand an {host} eine Bildschirmaufnahme-Anfrage bestätigen.",
+  "7c95483d772cca40": "{host} benötigt eine angemeldete Desktop-Sitzung. Wenn Windows eine Sicherheitsabfrage für Cua Driver anzeigt, muss jemand an diesem Computer darauf reagieren.",
+  "8d470dfb1a596179": "Computersteuerung benötigt einen Desktop auf {host}.",
+  "82a12d86994dfd17": "In anderen Apps klicken, tippen und Steuerelemente lesen.",
+  "4bbac051622766c1": "Den Bildschirm sehen, um den nächsten Schritt zu entscheiden.",
+  "a9b9096280be6466": [
+    "Agenten ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " verwenden lassen"
+  ],
+  "2134eedfc10881bf": [
+    "Mit Cua Driver können Agenten Apps auf ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " im Hintergrund sehen und bedienen, ohne deinen Mauszeiger zu bewegen. Danach gestartete Agentensitzungen erhalten die Werkzeuge zur Computersteuerung."
+  ],
+  "91db0a2b0ad84a78": "Wenn eine Berechtigung nach dem Erlauben aus bleibt, beende T3 Code und öffne es erneut.",
+  "72cb818f86f74f1d": "Verbinde die ausgewählte Umgebung, um die Computersteuerung einzurichten.",
+  "3a989eeb48af4c84": "Wähle eine Umgebung, um die Computersteuerung auf ihrem Host einzurichten.",
+  "c97c0f969ce80c8c": "Computersteuerung konnte nicht geprüft werden: {error}",
+  "801552a09d64a639": "Host wird geprüft…",
+  "e1b60530b496ca5c": "Computersteuerung wird auf diesem Host nicht unterstützt.",
+  "639ff10e3ee18700": "Läuft",
+  "141b50a063b68ed7": "Startet mit der nächsten Agentensitzung",
+  "0e89b20d03477910": "Agenten Apps auf {host} über Cua Driver im Hintergrund sehen und bedienen lassen, ohne deinen Mauszeiger zu bewegen. Neue Agentensitzungen erhalten die Werkzeuge; beim Ausschalten wird der Treiber beendet.",
+  "d18307275ee97e9a": "Computersteuerung auf Standard zurücksetzen",
+  "1419352c258bc7de": "Diese Verbindung kann auf diesem Host keine Einstellungen ändern.",
+  "b26ad48726dd8132": "Computersteuerung ist eingeschaltet, aber Cua Driver konnte nicht neu starten. Öffne das Setup erneut.",
+  "024b1791e74e4875": "Einrichtung nötig",
+  "565cc034918e3732": "Verwendet {browser}",
+  "ce62c408d095401d": "Aktiviere Remote-Debugging in deinem Browser",
+  "2541722d5b0f9ccd": "Agenten über Chrome DevTools MCP die offenen Tabs und Anmeldungen in deinem Browser auf {host} nutzen lassen.",
+  "b714ba7431dc4989": "Browser-Tabs für Agenten",
+  "143cde2e0b8d2e7c": "Setup",
+  "9a44b2704adff236": "chrome devtools tabs anmeldungen angemeldet browser remote-debugging edge brave",
+  "04050ac46c68cdaa": "cua driver apps desktop bildschirm klicken tippen agenten steuerung computersteuerung mac linux windows",
+  "2485877057d662f6": "Das Speichern ist fehlgeschlagen. Versuch es erneut."
 }

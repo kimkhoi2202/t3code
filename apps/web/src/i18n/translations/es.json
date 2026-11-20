@@ -12191,5 +12191,101 @@
   "27d76249d09eb69f": "Guía de revisión lista",
   "faa3bb26abb39c93": "Falló la guía de revisión",
   "b7df38b7d8792d78": "Abrir guía",
-  "9e91e9a77b664e4e": "No se pudo iniciar una guía de revisión"
+  "9e91e9a77b664e4e": "No se pudo iniciar una guía de revisión",
+  "d89418e289b38f62": "Cambiar la conectividad del túnel gestionado.",
+  "77069ea78dc20ef2": "Usando tu ordenador",
+  "f624d18fa6181f60": "Detener",
+  "bf066df32c752202": "Mostrar pull requests vinculadas",
+  "cc10829e6a2d7661": "App: {name}",
+  "0051e6585d7ea014": "No hay pull requests vinculadas disponibles para este hilo.",
+  "713aa4c9c08f042b": "No hay pull requests vinculadas disponibles.",
+  "aedaf7f4faba8bd3": "Vuelve a enviar cuando aparezca su miniatura.",
+  "5b31a853afbdd6bc": "Buscando archivos, hilos y apps...",
+  "1fcbf1a95bcb4002": "Archivos, hilos y apps",
+  "4fcabb6aca677012": "No hay archivos, hilos ni apps que coincidan.",
+  "55390eede35b4c5b": "Disponible cuando el hilo principal está inactivo.",
+  "adb7e02a95cde08e": "Disponible después de una respuesta terminada.",
+  "528a915a5a8da499": "Recuperado",
+  "cadee16eb4a6a398": "El hilo principal recibe este chat lateral con tu próximo mensaje allí.",
+  "46e115f4d73fdaad": "No se pudo recuperar el chat lateral",
+  "9bd31b8911a11607": "Recuperar",
+  "c8c58bab29faa2e9": "App",
+  "be6231ac5b08f35e": "Los chats laterales solo admiten texto",
+  "5511e975ba69f726": "Ordenador",
+  "1ef44b8f78119bba": "Vista previa flotante del uso del ordenador",
+  "e60b3936c5e2190b": "Vista previa no disponible",
+  "65ba9047454a5170": "Esperando al agente…",
+  "93cebe7fdcc9821e": "Pull requests vinculadas no disponibles",
+  "47c92b77099a6346": "Este entorno no admite varias pull requests vinculadas.",
+  "74da2dae824a4573": "Vincular",
+  "c5cf4921e9b53824": "Chrome DevTools MCP no se instaló. Inténtalo de nuevo.",
+  "290cac9bd85be15a": "Usar las pestañas de tu navegador",
+  "2709455317e2d538": [
+    "Los agentes se conectan al navegador de ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " que tiene la depuración remota activada. En ",
+    {
+      "i": 2,
+      "k": "_gt_value_2",
+      "v": "v"
+    },
+    ", abre la página del navegador que aparece abajo y activa la depuración remota. El navegador pide permitir cada conexión, así que alguien en ",
+    {
+      "i": 3,
+      "k": "_gt_value_3",
+      "v": "v"
+    },
+    " tiene que aprobarla."
+  ],
+  "2e844dc004983ebb": "No se encontró ningún navegador Chromium. Instala Chrome, Edge, Brave, Helium o Chromium.",
+  "99859ef84af13eb3": "Activada",
+  "707f67fce618fc5e": "No se pudo guardar el ajuste. Inténtalo de nuevo.",
+  "884fd831365c61c5": "{host} necesita Accesibilidad y Grabación de pantalla. Termina la configuración en ese Mac: en Ajustes del Sistema → Privacidad y seguridad, concede acceso a la app o al proceso que ejecuta este entorno. Puedes activar el ajuste desde aquí.",
+  "9250c3c1139e34ba": "{host} necesita una sesión gráfica iniciada. En Wayland, puede que alguien en {host} tenga que aprobar una solicitud de captura de pantalla.",
+  "7c95483d772cca40": "{host} necesita una sesión de escritorio iniciada. Si Windows muestra un aviso de seguridad para Cua Driver, alguien en ese equipo debe responder.",
+  "8d470dfb1a596179": "El uso del ordenador necesita un escritorio en {host}.",
+  "82a12d86994dfd17": "Hacer clic, escribir y leer controles en otras apps.",
+  "4bbac051622766c1": "Ver la pantalla para decidir qué hacer a continuación.",
+  "a9b9096280be6466": [
+    "Permitir que los agentes usen ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    }
+  ],
+  "2134eedfc10881bf": [
+    "Cua Driver permite que los agentes vean y usen apps en ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " en segundo plano, sin mover tu cursor. Las sesiones de agente que se inicien después tendrán las herramientas de uso del ordenador."
+  ],
+  "91db0a2b0ad84a78": "Si un permiso sigue desactivado después de permitirlo, cierra T3 Code y vuelve a abrirlo.",
+  "72cb818f86f74f1d": "Conecta el entorno seleccionado para configurar el uso del ordenador.",
+  "3a989eeb48af4c84": "Elige un entorno para configurar el uso del ordenador en su host.",
+  "c97c0f969ce80c8c": "No se pudo comprobar el uso del ordenador: {error}",
+  "801552a09d64a639": "Comprobando el host…",
+  "e1b60530b496ca5c": "El uso del ordenador no es compatible con este host.",
+  "639ff10e3ee18700": "En ejecución",
+  "141b50a063b68ed7": "Se inicia con la próxima sesión de agente",
+  "0e89b20d03477910": "Permite que los agentes vean y usen apps en {host} mediante Cua Driver, en segundo plano y sin mover tu cursor. Las nuevas sesiones de agente reciben las herramientas; al desactivarlo, el controlador se detiene.",
+  "d18307275ee97e9a": "Restablecer el uso del ordenador al valor predeterminado",
+  "1419352c258bc7de": "Esta conexión no puede cambiar ajustes en este host.",
+  "b26ad48726dd8132": "El uso del ordenador está activado, pero Cua Driver no pudo reiniciarse. Vuelve a abrir la configuración.",
+  "024b1791e74e4875": "Requiere configuración",
+  "565cc034918e3732": "Usando {browser}",
+  "ce62c408d095401d": "Activa la depuración remota en tu navegador",
+  "2541722d5b0f9ccd": "Permite que los agentes usen las pestañas abiertas y las sesiones iniciadas de tu navegador en {host} mediante Chrome DevTools MCP.",
+  "b714ba7431dc4989": "Pestañas del navegador para agentes",
+  "143cde2e0b8d2e7c": "Configuración",
+  "9a44b2704adff236": "chrome devtools pestañas sesiones sesión iniciada navegador depuración remota edge brave",
+  "04050ac46c68cdaa": "cua driver apps escritorio pantalla clic escribir agentes control uso del ordenador mac linux windows",
+  "2485877057d662f6": "No se pudo guardar. Inténtalo de nuevo."
 }

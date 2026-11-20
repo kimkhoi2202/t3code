@@ -12203,5 +12203,101 @@
   "27d76249d09eb69f": "Granskningsguiden är klar",
   "faa3bb26abb39c93": "Granskningsguiden misslyckades",
   "b7df38b7d8792d78": "Öppna guiden",
-  "9e91e9a77b664e4e": "Kunde inte starta en granskningsguide"
+  "9e91e9a77b664e4e": "Kunde inte starta en granskningsguide",
+  "d89418e289b38f62": "Ändra anslutningen för den hanterade tunneln.",
+  "77069ea78dc20ef2": "Använder din dator",
+  "f624d18fa6181f60": "Stoppa",
+  "bf066df32c752202": "Visa länkade pull requests",
+  "cc10829e6a2d7661": "App: {name}",
+  "0051e6585d7ea014": "Inga länkade pull requests är tillgängliga för den här tråden.",
+  "713aa4c9c08f042b": "Inga länkade pull requests tillgängliga.",
+  "aedaf7f4faba8bd3": "Skicka igen när miniatyrbilden visas.",
+  "5b31a853afbdd6bc": "Söker filer, trådar och appar...",
+  "1fcbf1a95bcb4002": "Filer, trådar och appar",
+  "4fcabb6aca677012": "Inga matchande filer, trådar eller appar.",
+  "55390eede35b4c5b": "Tillgängligt när huvudtråden är inaktiv.",
+  "adb7e02a95cde08e": "Tillgängligt efter ett färdigt svar.",
+  "528a915a5a8da499": "Hämtad tillbaka",
+  "cadee16eb4a6a398": "Huvudtråden får den här sidochatten med ditt nästa meddelande där.",
+  "46e115f4d73fdaad": "Kunde inte hämta tillbaka sidochatten",
+  "9bd31b8911a11607": "Hämta tillbaka",
+  "c8c58bab29faa2e9": "App",
+  "be6231ac5b08f35e": "Sidochattar tar bara emot text",
+  "5511e975ba69f726": "Dator",
+  "1ef44b8f78119bba": "Svävande förhandsvisning av datoranvändning",
+  "e60b3936c5e2190b": "Förhandsvisning är inte tillgänglig",
+  "65ba9047454a5170": "Väntar på agenten…",
+  "93cebe7fdcc9821e": "Länkade pull requests är inte tillgängliga",
+  "47c92b77099a6346": "Den här miljön stöder inte flera länkade pull requests.",
+  "74da2dae824a4573": "Länka",
+  "c5cf4921e9b53824": "Chrome DevTools MCP installerades inte. Försök igen.",
+  "290cac9bd85be15a": "Använd dina webbläsarflikar",
+  "2709455317e2d538": [
+    "Agenter ansluter till webbläsaren på ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " som har fjärrfelsökning på. Öppna webbläsarens sida nedan på ",
+    {
+      "i": 2,
+      "k": "_gt_value_2",
+      "v": "v"
+    },
+    " och slå på fjärrfelsökning. Webbläsaren ber om att tillåta varje anslutning, så någon vid ",
+    {
+      "i": 3,
+      "k": "_gt_value_3",
+      "v": "v"
+    },
+    " måste godkänna den."
+  ],
+  "2e844dc004983ebb": "Ingen Chromium-webbläsare hittades. Installera Chrome, Edge, Brave, Helium eller Chromium.",
+  "99859ef84af13eb3": "På",
+  "707f67fce618fc5e": "Det gick inte att spara inställningen. Försök igen.",
+  "884fd831365c61c5": "{host} behöver Tillgänglighet och Skärminspelning. Slutför konfigurationen på den Macen: ge appen eller processen som kör den här miljön åtkomst i Systeminställningar → Integritet och säkerhet. Du kan slå på inställningen härifrån.",
+  "9250c3c1139e34ba": "{host} behöver en inloggad grafisk session. Under Wayland kan någon vid {host} behöva godkänna en fråga om skärminspelning.",
+  "7c95483d772cca40": "{host} behöver en inloggad skrivbordssession. Om Windows visar en säkerhetsfråga för Cua Driver måste någon vid den datorn svara.",
+  "8d470dfb1a596179": "Datoranvändning kräver ett skrivbord på {host}.",
+  "82a12d86994dfd17": "Klicka, skriva och läsa kontroller i andra appar.",
+  "4bbac051622766c1": "Se skärmen för att avgöra vad som ska göras härnäst.",
+  "a9b9096280be6466": [
+    "Låt agenter använda ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    }
+  ],
+  "2134eedfc10881bf": [
+    "Med Cua Driver kan agenter se och använda appar på ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " i bakgrunden utan att flytta din markör. Agentsessioner som startas efteråt får verktygen för datoranvändning."
+  ],
+  "91db0a2b0ad84a78": "Om en behörighet förblir avstängd efter att du tillåtit den, avsluta och öppna T3 Code igen.",
+  "72cb818f86f74f1d": "Anslut den valda miljön för att konfigurera datoranvändning.",
+  "3a989eeb48af4c84": "Välj en miljö för att konfigurera datoranvändning på dess värd.",
+  "c97c0f969ce80c8c": "Det gick inte att kontrollera datoranvändning: {error}",
+  "801552a09d64a639": "Kontrollerar värden…",
+  "e1b60530b496ca5c": "Datoranvändning stöds inte på den här värden.",
+  "639ff10e3ee18700": "Körs",
+  "141b50a063b68ed7": "Startar med nästa agentsession",
+  "0e89b20d03477910": "Låt agenter se och använda appar på {host} via Cua Driver, i bakgrunden utan att flytta din markör. Nya agentsessioner får verktygen; när du stänger av det stoppas drivrutinen.",
+  "d18307275ee97e9a": "Återställ datoranvändning till standard",
+  "1419352c258bc7de": "Den här anslutningen kan inte ändra inställningar på den här värden.",
+  "b26ad48726dd8132": "Datoranvändning är på, men Cua Driver kunde inte startas om. Öppna konfigurationen igen.",
+  "024b1791e74e4875": "Behöver konfigureras",
+  "565cc034918e3732": "Använder {browser}",
+  "ce62c408d095401d": "Slå på fjärrfelsökning i din webbläsare",
+  "2541722d5b0f9ccd": "Låt agenter använda de öppna flikarna och inloggningarna i din webbläsare på {host} via Chrome DevTools MCP.",
+  "b714ba7431dc4989": "Agenters webbläsarflikar",
+  "143cde2e0b8d2e7c": "Konfiguration",
+  "9a44b2704adff236": "chrome devtools flikar inloggningar inloggad webbläsare fjärrfelsökning edge brave",
+  "04050ac46c68cdaa": "cua driver appar skrivbord skärm klicka skriva agenter styrning datoranvändning mac linux windows",
+  "2485877057d662f6": "Det gick inte att spara. Försök igen."
 }

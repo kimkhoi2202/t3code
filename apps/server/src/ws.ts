@@ -199,6 +199,10 @@ import { makePrepareTerminalLaunch } from "./workspace/restoreMissingWorktree.ts
 import { terminalOutputStream, withOutputWindow } from "./terminal/OutputProtocol.ts";
 import * as ServerBrowser from "./preview/ServerBrowser.ts";
 import * as DeviceService from "./device/DeviceService.ts";
+import * as CuaDriver from "./cua/CuaDriver.ts";
+import * as CuaApplications from "./cua/CuaApplications.ts";
+import * as BrowserTabs from "./mcp/BrowserTabs.ts";
+import * as CuaWindowPreview from "./cua/CuaWindowPreview.ts";
 import { remoteSshDeviceHosts } from "./device/localSshDeviceHost.ts";
 import * as PreviewManager from "./preview/Manager.ts";
 import { issueAssetUrl } from "./assets/AssetAccess.ts";
@@ -2372,6 +2376,34 @@ export const layerWsRpc = (
             Effect.andThen(scheduledTasks.getWebhookDelivery(input)),
           ),
         [WS_METHODS.serverProbe]: (_input) => Effect.succeed({}),
+        [WS_METHODS.serverCheckComputerUse]: (_input) =>
+          Effect.serviceOption(CuaDriver.CuaDriver).pipe(
+            Effect.flatMap((driver) =>
+              Option.isSome(driver)
+                ? driver.value.status
+                : Effect.succeed({ platform: "other", running: false } as const),
+            ),
+          ),
+        [WS_METHODS.serverListApplications]: () =>
+          Effect.flatMap(Effect.serviceOption(CuaApplications.CuaApplications), (service) =>
+            Option.isSome(service) ? service.value.list : Effect.succeed([]),
+          ),
+        [WS_METHODS.serverCheckBrowserTabs]: (_input) =>
+          Effect.serviceOption(BrowserTabs.BrowserTabs).pipe(
+            Effect.flatMap((tabs) =>
+              Option.isSome(tabs)
+                ? tabs.value.status
+                : Effect.succeed({ browsers: [], toolInstalled: false }),
+            ),
+          ),
+        [WS_METHODS.serverRunBrowserTabsAction]: (input) =>
+          Effect.serviceOption(BrowserTabs.BrowserTabs).pipe(
+            Effect.flatMap((tabs) =>
+              Option.isSome(tabs)
+                ? tabs.value.runAction(input.action)
+                : Effect.succeed({ browsers: [], toolInstalled: false }),
+            ),
+          ),
         [WS_METHODS.serverGetConfig]: (_input) =>
           loadServerConfig({
             usageLimitsCommand: false,
@@ -3321,6 +3353,16 @@ export const layerWsRpc = (
         [WS_METHODS.deviceAction]: (input) => deviceService.action(input),
         [WS_METHODS.subscribeDeviceState]: (_input) => DeviceService.stateStream(deviceService),
         [WS_METHODS.previewStopLocalServer]: (input) => portDiscovery.stopServer(input),
+        [WS_METHODS.subscribeCuaWindowPreview]: (input) =>
+          Stream.unwrap(
+            Effect.serviceOption(CuaWindowPreview.CuaWindowPreview).pipe(
+              Effect.map((preview) =>
+                Option.isSome(preview)
+                  ? preview.value.stream(input.threadId)
+                  : Stream.make({ status: "idle" as const }),
+              ),
+            ),
+          ),
         [WS_METHODS.subscribeDiscoveredLocalServers]: (input) =>
           Stream.callback<DiscoveredLocalServerList>((queue) =>
             Effect.gen(function* () {
